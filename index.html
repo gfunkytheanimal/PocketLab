@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Playable Universe</title>
+  </head>
+  <body>
+    <canvas id="application"></canvas>
+    <div id="void-dust"></div>
+    <div id="intro"></div>
+    <button id="corner-upload" class="corner-button corner-left" type="button">Upload Song</button>
+    <button id="corner-advanced" class="corner-button corner-right" type="button">Advanced</button>
+    <div id="controls-help">
+      <strong>Controls</strong>
+      <span>Piano: A S D F G H J and W E T Y U play notes.</span>
+      <span>Mouse drag orbits, wheel zooms scale, click previews, double click jumps, Backquote opens controls.</span>
+    </div>
+    <div id="hud">
+      <strong>Playable Universe</strong>
+      <span id="backend">initializing</span>
+      <span>piano physics, microphone listening, universal musical particles</span>
+    </div>
+    <div id="speed-indicator">UNIVERSE VIEW</div>
+    <div id="board-readout">NOTES none</div>
+    <div id="input-debug"></div>
+    <div id="audio-pulse"></div>
+    <div id="control-rings"></div>
+    <div id="encounter-label"></div>
+    <div id="film-grade"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
