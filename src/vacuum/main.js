@@ -102,6 +102,7 @@ const state = {
   fieldDensity: 1,
   trailLength: 240
 };
+window.__VACUUM_STATE__ = state;
 
 const factory = new ObjectFactory(scene, state);
 const physics = new PhysicsEngine(state);
@@ -294,6 +295,49 @@ function consumePhysicsEvents() {
       particles.burst(event.position, 0xff3c72, 58, 150, 'laser');
       nebula.burst(event.position, { count: 50, colorA: '#ff3c72', colorB: '#fff0ff', speed: 125, life: 0.9, radius: [3, 11], drift: 18 });
       ui.status.textContent = `${event.targetType ?? 'object'} beam-scarred`;
+      continue;
+    }
+    if (event.type === 'tidal-shear') {
+      const body = state.bodies.find((item) => item.id === event.bodyId);
+      const severity = event.severity ?? 0.5;
+      if (body) {
+        body.fieldStress = Math.max(body.fieldStress ?? 0, severity);
+        body.heat = Math.min(1, (body.heat ?? 0) + severity * 0.18);
+        body.angularVelocity += (Math.random() - 0.5) * severity * 0.9;
+        if (['ice', 'rock', 'metal'].includes(body.materialProfile) && severity > 0.7) {
+          seedFragments(body.position, body.velocity, Math.min(0.85, severity), body.category, undefined, `${body.label} Shear Chip`);
+        }
+      }
+      const recipe = shearRecipe(event.materialProfile, event.sourceCategory);
+      seedFineDust(event.position, Math.round(recipe.dust * severity), recipe.color, recipe.speed, recipe.radius, recipe.hot, recipe.label);
+      particles.burst(event.position, recipe.color, Math.round(recipe.sparks * severity), recipe.speed * 1.25, recipe.kind);
+      nebula.burst(event.position, { count: Math.round(recipe.cloud * severity), colorA: recipe.colorHex, colorB: recipe.colorB, speed: recipe.speed, life: recipe.life, radius: recipe.nebulaRadius, drift: recipe.drift });
+      ui.status.textContent = recipe.status;
+      continue;
+    }
+    if (event.type === 'radiant-scorch') {
+      const body = state.bodies.find((item) => item.id === event.bodyId);
+      if (body) {
+        body.label = body.label.startsWith('Scorched') ? body.label : `Scorched ${body.label}`;
+        body.glow = Math.max(body.glow ?? 1, 1.55);
+        body.heat = Math.min(1, (body.heat ?? 0) + 0.2);
+      }
+      seedFineDust(event.position, 28, 0xff7a24, 92, 0.045, true, 'Solar Ash');
+      particles.burst(event.position, 0xff9d42, 56, 110, 'radiation');
+      nebula.burst(event.position, { count: 54, colorA: '#ff7a24', colorB: '#fff0a8', speed: 96, life: 1.1, radius: [4, 13], drift: 26 });
+      ui.status.textContent = `${event.sourceType ?? 'rock'} surface scorched by star`;
+      continue;
+    }
+    if (event.type === 'orbital-resonance') {
+      const heavy = state.bodies.find((item) => item.id === event.heavyId);
+      const light = state.bodies.find((item) => item.id === event.lightId);
+      if (heavy && light) {
+        heavy.shockwave = Math.max(heavy.shockwave ?? 0, 0.16);
+        light.shockwave = Math.max(light.shockwave ?? 0, 0.28);
+      }
+      particles.burst(event.position, 0x72fff0, Math.round(22 + (event.severity ?? 0.5) * 24), 58, 'spark');
+      nebula.stream(event.position, randomDirection(), { colorA: '#72fff0', colorB: '#ffffff', count: 26, speed: 52, life: 1.2, radius: [2, 9], drift: 18 });
+      ui.status.textContent = `${event.lightType ?? 'body'} found a resonant path`;
       continue;
     }
     if (event.type === 'spacetime-shear') {
@@ -600,6 +644,102 @@ function impactRecipe(event) {
   if (categories.includes('planetary')) return { color: 0xb9794e, colorB: '#ffd36b', kind: 'spark' };
   if (categories.includes('small-body') || categories.includes('debris')) return { color: 0x9a8171, colorB: '#ffc28a', kind: 'spark' };
   return { color: 0xffb36b, colorB: '#ffffff', kind: 'spark' };
+}
+
+function shearRecipe(profile, category) {
+  if (profile === 'organic' || category === 'crew') {
+    return {
+      color: 0xff3a24,
+      colorHex: '#ff3a24',
+      colorB: '#ffd8c4',
+      kind: 'gas',
+      label: 'Bio Spray',
+      status: 'tidal shear shredded organic matter',
+      dust: 34,
+      sparks: 42,
+      cloud: 72,
+      speed: 105,
+      radius: 0.035,
+      hot: true,
+      life: 1.25,
+      nebulaRadius: [4, 16],
+      drift: 38
+    };
+  }
+  if (profile === 'ice') {
+    return {
+      color: 0xcffcff,
+      colorHex: '#cffcff',
+      colorB: '#72dfff',
+      kind: 'comet',
+      label: 'Icy Vapor',
+      status: 'tidal shear sprayed ice into vapor',
+      dust: 48,
+      sparks: 54,
+      cloud: 88,
+      speed: 125,
+      radius: 0.026,
+      hot: false,
+      life: 1.55,
+      nebulaRadius: [5, 20],
+      drift: 48
+    };
+  }
+  if (profile === 'gas' || profile === 'gas-giant' || category === 'gas') {
+    return {
+      color: 0x9b7cff,
+      colorHex: '#9b7cff',
+      colorB: '#ffb35d',
+      kind: 'gas',
+      label: 'Atmospheric Stream',
+      status: 'gravity peeled atmosphere into streamers',
+      dust: 64,
+      sparks: 36,
+      cloud: 120,
+      speed: 90,
+      radius: 0.03,
+      hot: true,
+      life: 2.1,
+      nebulaRadius: [8, 28],
+      drift: 64
+    };
+  }
+  if (profile === 'metal' || profile === 'field-metal' || category === 'spacecraft') {
+    return {
+      color: 0xb8d8ff,
+      colorHex: '#b8d8ff',
+      colorB: '#ffb36b',
+      kind: 'spark',
+      label: 'Hull Shards',
+      status: 'tidal shear tore metal loose',
+      dust: 28,
+      sparks: 62,
+      cloud: 52,
+      speed: 135,
+      radius: 0.04,
+      hot: true,
+      life: 1.1,
+      nebulaRadius: [3, 13],
+      drift: 30
+    };
+  }
+  return {
+    color: 0xff9d42,
+    colorHex: '#ff9d42',
+    colorB: '#ffd36b',
+    kind: 'spark',
+    label: 'Rock Grit',
+    status: 'tidal shear cracked rock into grit',
+    dust: 38,
+    sparks: 50,
+    cloud: 58,
+    speed: 115,
+    radius: 0.05,
+    hot: true,
+    life: 1.2,
+    nebulaRadius: [4, 14],
+    drift: 32
+  };
 }
 
 function spawn(type, position) {

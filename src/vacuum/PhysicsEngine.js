@@ -31,6 +31,8 @@ export class PhysicsEngine {
       body.abductCooldown = Math.max(0, (body.abductCooldown ?? 0) - dt);
       body.spacetimeCooldown = Math.max(0, (body.spacetimeCooldown ?? 0) - dt);
       body.materialCooldown = Math.max(0, (body.materialCooldown ?? 0) - dt);
+      body.tidalCooldown = Math.max(0, (body.tidalCooldown ?? 0) - dt);
+      body.resonanceCooldown = Math.max(0, (body.resonanceCooldown ?? 0) - dt);
     }
 
     for (let i = 0; i < bodies.length; i++) {
@@ -124,6 +126,7 @@ export class PhysicsEngine {
 
     this.applySpecialFields(a, b, dir, dist, distSq);
     this.applyFluidFields(a, b, dir, dist);
+    this.applyOrbitalResonance(a, b, dir, dist);
     this.clampVector(a.acceleration, this.state.maxAcceleration ?? 850);
     this.clampVector(b.acceleration, this.state.maxAcceleration ?? 850);
   }
@@ -187,6 +190,19 @@ export class PhysicsEngine {
         blackhole.accretion = Math.min(3, (blackhole.accretion ?? 0) + falloff * (feeding ? 0.035 : 0.006));
         other.heat = Math.min(1, (other.heat ?? 0) + falloff * 0.04);
         other.tidalStress = Math.max(other.tidalStress ?? 0, falloff * (blackhole.type === 'blackhole' ? 1 : 0.35));
+        if (falloff > 0.48 && (other.tidalCooldown ?? 0) <= 0 && other.category !== 'singularity') {
+          other.tidalCooldown = feeding ? 0.45 : 0.85;
+          blackhole.tidalCooldown = 0.25;
+          this.state.events?.push({
+            type: 'tidal-shear',
+            position: other.position.clone().lerp(blackhole.position, 0.35),
+            bodyId: other.id,
+            sourceType: other.type,
+            sourceCategory: other.category,
+            materialProfile: other.materialProfile,
+            severity: falloff
+          });
+        }
       }
     }
 
@@ -247,6 +263,18 @@ export class PhysicsEngine {
             });
           }
         }
+        if (other.materialProfile === 'rock' && (other.materialCooldown ?? 0) <= 0 && dist < reach * 0.48) {
+          other.heat = Math.min(1, (other.heat ?? 0) + 0.18);
+          other.fieldStress = Math.max(other.fieldStress ?? 0, 0.7);
+          this.cooldown(star, other, 1.15);
+          this.state.events?.push({
+            type: 'radiant-scorch',
+            position: other.position.clone().lerp(star.position, 0.42),
+            bodyId: other.id,
+            sourceType: other.type,
+            severity: 1 - dist / (reach * 0.48)
+          });
+        }
         if (other.type === 'comet') {
           const falloff = 1 - dist / reach;
           other.heat = Math.min(1, (other.heat ?? 0) + falloff * 0.08);
@@ -286,6 +314,37 @@ export class PhysicsEngine {
         }
       }
     }
+  }
+
+  applyOrbitalResonance(a, b, dir, dist) {
+    if ((a.resonanceCooldown ?? 0) > 0 || (b.resonanceCooldown ?? 0) > 0) return;
+    if (a.mass <= 0 || b.mass <= 0 || a.attachedTo || b.attachedTo) return;
+    if (a.category === 'dust' || b.category === 'dust') return;
+    const heavy = a.mass >= b.mass ? a : b;
+    const light = heavy === a ? b : a;
+    if (heavy.mass < light.mass * 1.65 || heavy.mass < 8) return;
+    const min = this.effectiveRadius(a) + this.effectiveRadius(b);
+    if (dist < min * 2.2 || dist > Math.max(heavy.radius * 12, min * 8)) return;
+    const rel = this.relative.subVectors(light.velocity, heavy.velocity);
+    const speed = rel.length();
+    if (speed < 7) return;
+    const radial = Math.abs(rel.dot(light === b ? dir : dir.clone().multiplyScalar(-1)));
+    const tangentRatio = 1 - radial / Math.max(0.001, speed);
+    if (tangentRatio < 0.62) return;
+    const score = Math.min(1, tangentRatio * Math.min(1, speed / 70));
+    heavy.fieldStress = Math.max(heavy.fieldStress ?? 0, score * 0.55);
+    light.fieldStress = Math.max(light.fieldStress ?? 0, score * 0.85);
+    a.resonanceCooldown = 1.2;
+    b.resonanceCooldown = 1.2;
+    this.state.events?.push({
+      type: 'orbital-resonance',
+      position: heavy.position.clone().lerp(light.position, 0.5),
+      heavyId: heavy.id,
+      lightId: light.id,
+      heavyType: heavy.type,
+      lightType: light.type,
+      severity: score
+    });
   }
 
   collisions() {
