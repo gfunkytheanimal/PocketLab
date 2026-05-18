@@ -88,6 +88,7 @@ export class Interaction {
       if (event.code === 'KeyR') this.callbacks.reset();
       if (event.code === 'KeyG') this.callbacks.toggleFields();
       if (event.code === 'KeyT') this.callbacks.toggleTrails();
+      if (event.code === 'KeyA') this.callbacks.toggleScanner?.();
     });
   }
 

@@ -27,6 +27,7 @@
               <button id="trails-btn" type="button">Trails</button>
               <button id="particles-btn" type="button">Cosmic FX</button>
               <button id="filaments-btn" type="button">Filaments</button>
+              <button id="scanner-btn" type="button" title="Toggle the fictional Field Event Scanner. Shortcut: A">Scanner</button>
               <button id="bounds-btn" type="button">Bounds</button>
               <button id="pulse-btn" type="button">Pulse</button>
               <button id="fossilize-btn" type="button" title="Bake the current chaos into the distant nebula, then clear the live simulation.">Fossilize</button>
@@ -147,11 +148,12 @@
       <section id="inspector" class="hidden"></section>
       <section id="help-panel" class="hidden">
         <strong>Controls</strong>
-        <span>Left drag empty space to orbit. Left drag objects to move them. Right drag pans. Scroll zooms deep in/out. Space pauses. R resets. G fields. T trails.</span>
+        <span>Left drag empty space to orbit. Left drag objects to move them. Right drag pans. Scroll zooms deep in/out. Space pauses. R resets. G fields. T trails. A scanner.</span>
       </section>
       <div id="hud">
         <strong>Vacuum Playground</strong>
         <span id="status">drag something into empty space</span>
+        <span id="scanner-readout" class="hidden">Scanner: 0 events</span>
       </div>
       <div id="coordinates" class="hidden">X 0 Y 0 Z 0</div>
       <div id="selection-badge" class="hidden"></div>

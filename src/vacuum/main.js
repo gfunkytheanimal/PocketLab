@@ -14,6 +14,8 @@ import { NebulaBackground } from './NebulaBackground.js';
 import { NebulaFxLayer } from './NebulaFxLayer.js';
 import { FilamentLayer } from './FilamentLayer.js';
 import { PaintLayer } from './PaintLayer.js';
+import { FieldEventScanner } from './FieldEventScanner.js';
+import { FieldEventOverlay } from './FieldEventOverlay.js';
 import { createSoftParticleTexture } from './SoftParticleTexture.js';
 import { ASSETS } from './config.js';
 
@@ -70,6 +72,8 @@ const state = {
   showParticles: true,
   showFilaments: false,
   showBounds: false,
+  showScanner: false,
+  scannerCount: 0,
   devMode: false,
   toolMode: 'select',
   brushMode: 'stars',
@@ -114,6 +118,8 @@ const nebulaBackground = new NebulaBackground(scene, state);
 const nebula = new NebulaFxLayer(scene, state);
 const filaments = new FilamentLayer(scene, state);
 const paintLayer = new PaintLayer(scene, state);
+const scanner = new FieldEventScanner(state);
+const scannerOverlay = new FieldEventOverlay(scene, state, scanner);
 const ui = new UI(state, {
   spawn,
   spawnAtCenter: (type) => spawn(type, findFreeSpawnPosition(type)),
@@ -127,6 +133,7 @@ const ui = new UI(state, {
   toggleParticles,
   toggleFilaments,
   toggleBounds,
+  toggleScanner,
   pulseUniverse,
   fossilizeUniverse,
   clearDust,
@@ -154,6 +161,7 @@ new Interaction(renderer, camera, state, {
   toggleParticles,
   toggleFilaments,
   toggleBounds,
+  toggleScanner,
   pulseUniverse,
   fossilizeUniverse,
   clearDust,
@@ -190,9 +198,11 @@ function animate(now) {
     nebulaBackground.update(dt, camera);
     nebula.update(dt);
     paintLayer.update(dt);
+    scanner.update(dt);
   }
   filaments.update(dt);
   effects.update();
+  scannerOverlay.update(Math.min(0.033, (now - last) / 1000 || 0.016), camera);
   starfield.position.copy(camera.position);
   ui.updateInspector();
   updateCameraTarget();
@@ -2260,6 +2270,12 @@ function toggleBounds() {
   ui.syncToolbar();
 }
 
+function toggleScanner() {
+  state.showScanner = !state.showScanner;
+  ui.status.textContent = state.showScanner ? 'anomaly scanner listening' : 'anomaly scanner hidden';
+  ui.syncToolbar();
+}
+
 function pulseUniverse() {
   const origin = state.selected?.position.clone() ?? systemCenter();
   if (!state.bodies.length) {
@@ -2716,6 +2732,8 @@ function reset(options = {}) {
   filaments.clear();
   effects.clearAll();
   paintLayer.clear();
+  scanner.clear();
+  scannerOverlay.clear();
   if (!options.preserveFossils) nebulaBackground.clearFossils();
   paintCursor.visible = false;
   controls.target.set(0, 0, 0);

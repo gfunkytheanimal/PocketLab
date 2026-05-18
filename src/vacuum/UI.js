@@ -66,6 +66,7 @@ export class UI {
     this.helpPanel = document.getElementById('help-panel');
     this.devPanel = document.getElementById('dev-panel');
     this.status = document.getElementById('status');
+    this.scannerReadout = document.getElementById('scanner-readout');
     this.coordinates = document.getElementById('coordinates');
     this.buildLibrary();
     this.bindToolbar();
@@ -121,6 +122,7 @@ export class UI {
     this.bindStateButton('trails-btn', () => this.callbacks.toggleTrails());
     this.bindStateButton('particles-btn', () => this.callbacks.toggleParticles());
     this.bindStateButton('filaments-btn', () => this.callbacks.toggleFilaments());
+    this.bindStateButton('scanner-btn', () => this.callbacks.toggleScanner());
     this.bindStateButton('bounds-btn', () => this.callbacks.toggleBounds());
     this.bindStateButton('dev-mode-btn', () => this.toggleDevMode());
     document.getElementById('pulse-btn').addEventListener('click', () => this.callbacks.pulseUniverse());
@@ -174,6 +176,7 @@ export class UI {
     this.syncToggle('trails-btn', this.state.showTrails);
     this.syncToggle('particles-btn', this.state.showParticles);
     this.syncToggle('filaments-btn', this.state.showFilaments);
+    this.syncToggle('scanner-btn', this.state.showScanner);
     this.syncToggle('bounds-btn', this.state.showBounds);
     this.syncToggle('dev-mode-btn', this.state.devMode);
     document.getElementById('pause-btn').classList.toggle('is-off', this.state.paused);
@@ -184,6 +187,10 @@ export class UI {
     document.querySelectorAll('.brush-btn').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.brush === this.state.brushMode);
     });
+    if (this.scannerReadout) {
+      this.scannerReadout.classList.toggle('hidden', !this.state.showScanner);
+      this.scannerReadout.textContent = `Scanner: ${this.state.scannerCount ?? 0} events`;
+    }
   }
 
   syncPhysicsInputs() {
@@ -216,6 +223,7 @@ export class UI {
   }
 
   updateInspector() {
+    this.updateScannerReadout();
     const body = this.state.selected;
     if (!body) {
       this.inspector.classList.add('hidden');
@@ -240,6 +248,12 @@ export class UI {
     this.inspector.querySelector('[data-readout="w"]').textContent = (body.w ?? 0).toFixed(1);
     this.inspector.querySelector('[data-readout="dilation"]').textContent = (body.timeDilation ?? 1).toFixed(2);
     this.inspector.querySelector('[data-readout="emergent"]').textContent = this.emergentStatus(body);
+  }
+
+  updateScannerReadout() {
+    if (!this.scannerReadout) return;
+    this.scannerReadout.classList.toggle('hidden', !this.state.showScanner);
+    this.scannerReadout.textContent = `Scanner: ${this.state.scannerCount ?? 0} events`;
   }
 
   buildInspector(body) {
