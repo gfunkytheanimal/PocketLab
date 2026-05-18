@@ -532,6 +532,8 @@ export class PhysicsEngine {
     const comet = a.type === 'comet' ? a : b.type === 'comet' ? b : null;
     const gas = a.type === 'gas' ? a : b.type === 'gas' ? b : null;
     const rockyPlanet = ['planet', 'mars'].includes(a.type) ? a : ['planet', 'mars'].includes(b.type) ? b : null;
+    const planet = ['planet', 'mars', 'moon', 'jupiter'].includes(a.type) ? a : ['planet', 'mars', 'moon', 'jupiter'].includes(b.type) ? b : null;
+    const impactor = planet === a ? b : planet === b ? a : null;
     if (gas && rockyPlanet && this.readyForReaction(gas, rockyPlanet)) {
       const outward = gas.position.clone().sub(rockyPlanet.position);
       if (outward.lengthSq() < 0.001) outward.copy(normal);
@@ -553,6 +555,49 @@ export class PhysicsEngine {
         planetType: rockyPlanet.type
       });
       return false;
+    }
+    if (planet && impactor && this.readyForReaction(planet, impactor)) {
+      if (impactor.type === 'comet') {
+        const impactDir = impactor.position.clone().sub(planet.position);
+        if (impactDir.lengthSq() < 0.001) impactDir.copy(normal);
+        impactDir.normalize();
+        planet.water = Math.min(1, (planet.water ?? 0) + (planet.type === 'jupiter' ? 0.04 : 0.18));
+        planet.atmosphere = Math.min(1, (planet.atmosphere ?? 0) + 0.08);
+        planet.fieldStress = Math.max(planet.fieldStress ?? 0, 0.55);
+        planet.heat = Math.min(1, (planet.heat ?? 0) + 0.12);
+        impactor.toRemove = impactor.mass < 5;
+        if (!impactor.toRemove) impactor.velocity.addScaledVector(impactDir, 42 / Math.max(0.5, impactor.mass));
+        this.cooldown(planet, impactor, 1.4);
+        this.state.events?.push({
+          type: 'water-delivery',
+          position: impactor.position.clone().lerp(planet.position, 0.35),
+          planetId: planet.id,
+          impactorId: impactor.id,
+          planetType: planet.type,
+          severity: Math.min(1, impactor.velocity.length() / 120 + 0.35)
+        });
+        return true;
+      }
+      if (['asteroid', 'debris'].includes(impactor.type) && planet.type !== 'jupiter') {
+        const speed = impactor.velocity.clone().sub(planet.velocity).length();
+        const severity = Math.min(1, 0.25 + speed / 140 + impactor.mass / Math.max(12, planet.mass));
+        planet.craters = (planet.craters ?? 0) + 1;
+        planet.heat = Math.min(1, (planet.heat ?? 0) + severity * 0.25);
+        planet.fieldStress = Math.max(planet.fieldStress ?? 0, severity * 0.75);
+        impactor.toRemove = impactor.mass < 3 || speed > 58;
+        if (!impactor.toRemove) impactor.velocity.reflect(normal).multiplyScalar(0.45);
+        this.cooldown(planet, impactor, 1.0);
+        this.state.events?.push({
+          type: 'crater-impact',
+          position: impactor.position.clone().lerp(planet.position, 0.42),
+          planetId: planet.id,
+          impactorId: impactor.id,
+          planetType: planet.type,
+          sourceType: impactor.type,
+          severity
+        });
+        return true;
+      }
     }
     if (star && comet && this.readyForReaction(star, comet)) {
       const outward = comet.position.clone().sub(star.position);

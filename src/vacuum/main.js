@@ -313,6 +313,37 @@ function consumePhysicsEvents() {
       ui.status.textContent = `${event.planetType ?? 'planet'} started forming atmosphere`;
       continue;
     }
+    if (event.type === 'water-delivery') {
+      const planet = state.bodies.find((item) => item.id === event.planetId);
+      const severity = event.severity ?? 0.5;
+      if (planet) {
+        planet.label = planet.label.includes('Icy') || planet.label.includes('Oceanic') ? planet.label : `${planet.water > 0.45 ? 'Oceanic' : 'Icy'} ${planet.label}`;
+        planet.glow = Math.max(planet.glow ?? 1, 1.18);
+        planet.shockwave = Math.max(planet.shockwave ?? 0, 0.35);
+        addAtmosphereShell(planet, event.planetType === 'mars' ? 0xffb07a : 0x7edfff);
+        addSurfaceMark(planet, event.position, event.planetType === 'mars' ? 0xbfd8ff : 0x8ff7ff, 0.26 + severity * 0.28, 'water-mark');
+      }
+      seedFineDust(event.position, Math.round(34 + severity * 34), 0xcffcff, 82 + severity * 70, 0.024, false, 'Comet Steam');
+      particles.burst(event.position, 0xcffcff, Math.round(62 + severity * 48), 105 + severity * 70, 'comet');
+      nebula.burst(event.position, { count: Math.round(72 + severity * 64), colorA: '#cffcff', colorB: '#ffffff', speed: 96 + severity * 60, life: 1.55, radius: [5, 20], drift: 46 });
+      ui.status.textContent = `${event.planetType ?? 'planet'} received comet water`;
+      continue;
+    }
+    if (event.type === 'crater-impact') {
+      const planet = state.bodies.find((item) => item.id === event.planetId);
+      const severity = event.severity ?? 0.5;
+      if (planet) {
+        planet.label = planet.label.includes('Cratered') ? planet.label : `Cratered ${planet.label}`;
+        planet.shockwave = Math.max(planet.shockwave ?? 0, 0.6);
+        addSurfaceMark(planet, event.position, event.planetType === 'mars' ? 0x3a160f : 0x1f2730, 0.32 + severity * 0.42, 'crater-mark');
+      }
+      seedFineDust(event.position, Math.round(28 + severity * 42), event.planetType === 'mars' ? 0xb65a37 : 0xb8a08a, 88 + severity * 90, 0.055, severity > 0.55, 'Ejecta Dust');
+      particles.burst(event.position, event.planetType === 'mars' ? 0xff7a24 : 0xb8a08a, Math.round(50 + severity * 65), 100 + severity * 120, 'spark');
+      nebula.burst(event.position, { count: Math.round(54 + severity * 72), colorA: event.planetType === 'mars' ? '#b65a37' : '#b8a08a', colorB: '#ffd36b', speed: 96 + severity * 95, life: 1.15, radius: [4, 17], drift: 38 });
+      state.cameraShake = Math.max(state.cameraShake, 1.2 + severity * 2.8);
+      ui.status.textContent = `${event.sourceType ?? 'rock'} cratered ${event.planetType ?? 'planet'}`;
+      continue;
+    }
     if (event.type === 'tidal-shear') {
       const body = state.bodies.find((item) => item.id === event.bodyId);
       const severity = event.severity ?? 0.5;
@@ -1741,6 +1772,33 @@ function addAtmosphereShell(body, color = 0x72dfff) {
   shell.material.color.setHex(color);
   shell.material.opacity = Math.min(0.46, 0.12 + (body.atmosphere ?? 0.25) * 0.34);
   shell.scale.setScalar(1 + (body.atmosphere ?? 0.2) * 0.24);
+}
+
+function addSurfaceMark(body, worldPosition, color = 0x222222, scale = 0.4, name = 'surface-mark') {
+  const local = worldPosition.clone().sub(body.position);
+  if (local.lengthSq() < 0.001) local.set(1, 0, 0);
+  local.normalize();
+  const mark = new THREE.Mesh(
+    new THREE.CircleGeometry(body.baseRadius * scale, 28),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: name === 'water-mark' ? 0.42 : 0.55,
+      blending: name === 'water-mark' ? THREE.AdditiveBlending : THREE.NormalBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
+  );
+  mark.name = name;
+  mark.position.copy(local.multiplyScalar(body.baseRadius * 1.035));
+  mark.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), mark.position.clone().normalize());
+  mark.userData.birth = performance.now();
+  body.group.add(mark);
+  const marks = body.group.children.filter((child) => child.name === name);
+  while (marks.length > 8) {
+    const old = marks.shift();
+    body.group.remove(old);
+  }
 }
 
 function seedFragments(position, inheritedVelocity, severity = 0.5, category = 'debris', colors = [0x9fefff], label = null) {

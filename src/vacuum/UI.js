@@ -354,6 +354,8 @@ export class UI {
   emergentStatus(body) {
     const bits = [];
     if (body.atmosphere) bits.push(`atmosphere ${(body.atmosphere * 100).toFixed(0)}%`);
+    if (body.water) bits.push(`${body.water > 0.45 ? 'ocean' : 'ice'} ${(body.water * 100).toFixed(0)}%`);
+    if (body.craters) bits.push(`${body.craters} crater${body.craters === 1 ? '' : 's'}`);
     if (body.satelliteCount) bits.push(`${body.satelliteCount} capture${body.satelliteCount === 1 ? '' : 's'}`);
     if (body.accretion && body.accretion > 0.5) bits.push(`accretion ${body.accretion.toFixed(1)}`);
     if (body.phaseShift && body.phaseShift > 0.05) bits.push(`phase ${(body.phaseShift * 100).toFixed(0)}%`);
