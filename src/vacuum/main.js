@@ -297,6 +297,22 @@ function consumePhysicsEvents() {
       ui.status.textContent = `${event.targetType ?? 'object'} beam-scarred`;
       continue;
     }
+    if (event.type === 'atmosphere-accretion') {
+      const planet = state.bodies.find((item) => item.id === event.planetId);
+      const gas = state.bodies.find((item) => item.id === event.gasId);
+      if (planet) {
+        planet.label = planet.label.includes('Atmospheric') ? planet.label : `Atmospheric ${planet.label}`;
+        planet.glow = Math.max(planet.glow ?? 1, 1.28);
+        planet.atmosphere = Math.min(1, (planet.atmosphere ?? 0) + 0.28);
+        addAtmosphereShell(planet, event.planetType === 'mars' ? 0xff9d62 : 0x72dfff);
+      }
+      if (gas && gas.mass < 1.1) gas.toRemove = true;
+      seedFineDust(event.position, 46, event.planetType === 'mars' ? 0xff9d62 : 0x9fefff, 78, 0.032, false, 'Atmosphere Seed');
+      particles.burst(event.position, event.planetType === 'mars' ? 0xff9d62 : 0x9fefff, 64, 92, 'gas');
+      nebula.burst(event.position, { count: 92, colorA: event.planetType === 'mars' ? '#ff9d62' : '#9fefff', colorB: '#ffffff', speed: 86, life: 1.8, radius: [7, 24], drift: 44 });
+      ui.status.textContent = `${event.planetType ?? 'planet'} started forming atmosphere`;
+      continue;
+    }
     if (event.type === 'tidal-shear') {
       const body = state.bodies.find((item) => item.id === event.bodyId);
       const severity = event.severity ?? 0.5;
@@ -338,6 +354,25 @@ function consumePhysicsEvents() {
       particles.burst(event.position, 0x72fff0, Math.round(22 + (event.severity ?? 0.5) * 24), 58, 'spark');
       nebula.stream(event.position, randomDirection(), { colorA: '#72fff0', colorB: '#ffffff', count: 26, speed: 52, life: 1.2, radius: [2, 9], drift: 18 });
       ui.status.textContent = `${event.lightType ?? 'body'} found a resonant path`;
+      continue;
+    }
+    if (event.type === 'capture-lock') {
+      const host = state.bodies.find((item) => item.id === event.hostId);
+      const guest = state.bodies.find((item) => item.id === event.guestId);
+      if (host && guest) {
+        host.shockwave = Math.max(host.shockwave ?? 0, 0.12);
+        guest.shockwave = Math.max(guest.shockwave ?? 0, 0.34);
+        guest.label = guest.label.includes('Captured') ? guest.label : `Captured ${guest.label}`;
+        host.satelliteCount = (host.satelliteCount ?? 0) + 1;
+        if (host.satelliteCount >= 2) {
+          host.label = host.label.includes('Ringed') ? host.label : `Ringed ${host.label}`;
+          host.atmosphere = Math.min(1, (host.atmosphere ?? 0) + 0.12);
+        }
+      }
+      particles.burst(event.position, 0x72fff0, 42, 72, 'spark');
+      nebula.burst(event.position, { count: 56, colorA: '#72fff0', colorB: '#ffffff', speed: 72, life: 1.25, radius: [3, 13], drift: 22 });
+      if (host) seedCaptureRing(host, event.radius ?? host.radius * 5);
+      ui.status.textContent = `${event.guestType ?? 'body'} captured by ${event.hostType ?? 'planet'}`;
       continue;
     }
     if (event.type === 'spacetime-shear') {
@@ -1176,6 +1211,15 @@ function updateBodyVisual(body, dt) {
       }
     });
   }
+  if (body.atmosphere) {
+    const shell = body.group.children.find((child) => child.name === 'emergent-atmosphere');
+    if (shell) {
+      shell.rotation.z += dt * (0.08 + body.fieldStress * 0.18);
+      shell.rotation.y += dt * 0.04;
+      shell.material.opacity = Math.min(0.5, 0.1 + body.atmosphere * 0.32 + body.fieldStress * 0.08);
+      shell.scale.setScalar(1 + body.atmosphere * 0.22 + Math.sin(performance.now() * 0.0018 + body.id) * 0.025);
+    }
+  }
   if (body.heat > 0 && body.mesh.material?.emissiveIntensity !== undefined && body.type !== 'star') {
     body.mesh.material.emissiveIntensity = (0.55 + body.heat * 1.8) * (body.glow ?? 1);
   } else if (body.mesh.material?.emissiveIntensity !== undefined && body.type !== 'star') {
@@ -1597,6 +1641,51 @@ function seedDirectedDust(position, direction, count, color, speed, mass = 0.06,
     dust.angularVelocity = (Math.random() - 0.5) * 2.2;
     state.bodies.push(dust);
   }
+}
+
+function seedCaptureRing(host, radius) {
+  const count = Math.min(34, Math.max(14, Math.round(radius / 10)));
+  const color = host.type === 'mars' ? 0xff9d62 : host.type === 'jupiter' ? 0xffd39a : 0x72fff0;
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 + Math.random() * 0.08;
+    const lift = (Math.random() - 0.5) * Math.min(34, radius * 0.16);
+    const position = host.position.clone().add(new THREE.Vector3(Math.cos(a) * radius, Math.sin(a) * radius, lift));
+    const dust = factory.create('dust', position);
+    dust.label = 'Capture Spark';
+    dust.mass = 0.025 + Math.random() * 0.025;
+    dust.radius = 0.42 + Math.random() * 0.55;
+    dust.baseRadius = 2;
+    dust.visualScale = dust.radius / dust.baseRadius;
+    dust.heat = 0.35;
+    dust.isDust = true;
+    dust.showTrail = false;
+    tintBody(dust, jitterColor(color, 0.12));
+    const tangent = new THREE.Vector3(-Math.sin(a), Math.cos(a), lift * 0.002).normalize();
+    dust.velocity.copy(host.velocity).addScaledVector(tangent, 18 + Math.random() * 24);
+    dust.lifetime = 8 + Math.random() * 8;
+    state.bodies.push(dust);
+  }
+}
+
+function addAtmosphereShell(body, color = 0x72dfff) {
+  let shell = body.group.children.find((child) => child.name === 'emergent-atmosphere');
+  if (!shell) {
+    shell = new THREE.Mesh(
+      new THREE.SphereGeometry(body.baseRadius * 1.34, 48, 24),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.18,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    shell.name = 'emergent-atmosphere';
+    body.group.add(shell);
+  }
+  shell.material.color.setHex(color);
+  shell.material.opacity = Math.min(0.46, 0.12 + (body.atmosphere ?? 0.25) * 0.34);
+  shell.scale.setScalar(1 + (body.atmosphere ?? 0.2) * 0.24);
 }
 
 function seedFragments(position, inheritedVelocity, severity = 0.5, category = 'debris', colors = [0x9fefff], label = null) {

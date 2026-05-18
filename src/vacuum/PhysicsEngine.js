@@ -33,6 +33,7 @@ export class PhysicsEngine {
       body.materialCooldown = Math.max(0, (body.materialCooldown ?? 0) - dt);
       body.tidalCooldown = Math.max(0, (body.tidalCooldown ?? 0) - dt);
       body.resonanceCooldown = Math.max(0, (body.resonanceCooldown ?? 0) - dt);
+      body.captureCooldown = Math.max(0, (body.captureCooldown ?? 0) - dt);
     }
 
     for (let i = 0; i < bodies.length; i++) {
@@ -126,9 +127,55 @@ export class PhysicsEngine {
 
     this.applySpecialFields(a, b, dir, dist, distSq);
     this.applyFluidFields(a, b, dir, dist);
+    this.applyCaptureAssist(a, b, dir, dist);
     this.applyOrbitalResonance(a, b, dir, dist);
     this.clampVector(a.acceleration, this.state.maxAcceleration ?? 850);
     this.clampVector(b.acceleration, this.state.maxAcceleration ?? 850);
+  }
+
+  applyCaptureAssist(a, b, dir, dist) {
+    if ((a.captureCooldown ?? 0) > 0 || (b.captureCooldown ?? 0) > 0) return;
+    const pair = this.capturePair(a, b);
+    if (!pair) return;
+    const { host, guest } = pair;
+    const reach = host.radius * (host.type === 'jupiter' ? 11 : 8.5);
+    if (dist < host.radius * 2.4 || dist > reach) return;
+    const outward = guest.position.clone().sub(host.position);
+    if (outward.lengthSq() < 0.001) return;
+    outward.normalize();
+    const rel = this.relative.subVectors(guest.velocity, host.velocity);
+    const radialSpeed = rel.dot(outward);
+    const tangentSpeed = rel.clone().addScaledVector(outward, -radialSpeed).length();
+    if (Math.abs(radialSpeed) > Math.max(28, tangentSpeed * 0.82)) return;
+    const ideal = Math.sqrt(Math.max(0.01, (this.state.gravityScale ?? G) * host.mass / Math.max(1, dist))) * 8.5;
+    if (tangentSpeed < ideal * 0.35 || tangentSpeed > ideal * 2.1) return;
+    const tangent = new THREE.Vector3(-outward.y, outward.x, outward.z * 0.18).normalize();
+    const direction = rel.dot(tangent) < 0 ? -1 : 1;
+    if (!guest.frozen) {
+      guest.velocity.copy(host.velocity).addScaledVector(tangent, ideal * direction);
+      guest.velocity.addScaledVector(outward, -Math.max(-8, Math.min(8, radialSpeed)) * 0.18);
+    }
+    guest.captureCooldown = 3.5;
+    host.captureCooldown = 1.4;
+    guest.fieldStress = Math.max(guest.fieldStress ?? 0, 0.85);
+    host.fieldStress = Math.max(host.fieldStress ?? 0, 0.36);
+    this.state.events?.push({
+      type: 'capture-lock',
+      position: host.position.clone().lerp(guest.position, 0.55),
+      hostId: host.id,
+      guestId: guest.id,
+      hostType: host.type,
+      guestType: guest.type,
+      radius: dist
+    });
+  }
+
+  capturePair(a, b) {
+    const hostTypes = new Set(['planet', 'mars', 'jupiter']);
+    const guestTypes = new Set(['moon', 'asteroid', 'comet', 'debris', 'dust', 'astronaut']);
+    if (hostTypes.has(a.type) && guestTypes.has(b.type)) return { host: a, guest: b };
+    if (hostTypes.has(b.type) && guestTypes.has(a.type)) return { host: b, guest: a };
+    return null;
   }
 
   applyFluidFields(a, b, dir, dist) {
@@ -483,6 +530,30 @@ export class PhysicsEngine {
     const hasField = profiles.some((profile) => ['field', 'field-metal'].includes(profile));
     const star = a.type === 'star' ? a : b.type === 'star' ? b : null;
     const comet = a.type === 'comet' ? a : b.type === 'comet' ? b : null;
+    const gas = a.type === 'gas' ? a : b.type === 'gas' ? b : null;
+    const rockyPlanet = ['planet', 'mars'].includes(a.type) ? a : ['planet', 'mars'].includes(b.type) ? b : null;
+    if (gas && rockyPlanet && this.readyForReaction(gas, rockyPlanet)) {
+      const outward = gas.position.clone().sub(rockyPlanet.position);
+      if (outward.lengthSq() < 0.001) outward.copy(normal);
+      outward.normalize();
+      gas.mass *= 0.55;
+      gas.radius *= 0.82;
+      gas.heat = Math.max(gas.heat ?? 0, 0.3);
+      gas.fieldStress = 1;
+      rockyPlanet.heat = Math.min(1, (rockyPlanet.heat ?? 0) + 0.18);
+      rockyPlanet.fieldStress = Math.max(rockyPlanet.fieldStress ?? 0, 0.75);
+      rockyPlanet.mass += gas.mass * 0.22;
+      if (!gas.frozen) gas.velocity.addScaledVector(outward, 28 / Math.max(0.6, gas.mass));
+      this.cooldown(gas, rockyPlanet, 1.8);
+      this.state.events?.push({
+        type: 'atmosphere-accretion',
+        position: gas.position.clone().lerp(rockyPlanet.position, 0.55),
+        planetId: rockyPlanet.id,
+        gasId: gas.id,
+        planetType: rockyPlanet.type
+      });
+      return false;
+    }
     if (star && comet && this.readyForReaction(star, comet)) {
       const outward = comet.position.clone().sub(star.position);
       if (outward.lengthSq() < 0.001) outward.copy(normal);
