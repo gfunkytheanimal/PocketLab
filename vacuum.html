@@ -9,9 +9,9 @@
     <main id="app">
       <canvas id="scene"></canvas>
       <div id="quickbar">
-        <button id="library-toggle" type="button" title="Toggle asset library">Assets</button>
+        <button id="library-toggle" type="button" title="Show/hide the full tool library">Tools</button>
         <button id="controls-toggle" type="button" title="Toggle lab controls">Lab</button>
-        <button id="inspector-toggle" type="button" title="Toggle inspector">Inspect</button>
+        <button id="inspector-toggle" type="button" title="Toggle selected-object readout">Info</button>
         <button id="help-toggle" type="button" title="Show controls">?</button>
         <button id="cinema-btn" type="button" title="Hide panels">Cinema</button>
       </div>
@@ -49,6 +49,10 @@
               <button class="camera-btn" data-view="follow" type="button">Follow</button>
             </div>
           </details>
+          <details id="selected-panel" class="toolbar-section hidden" open>
+            <summary>Selected Object</summary>
+            <div id="selected-controls"></div>
+          </details>
           <details class="toolbar-section" open>
             <summary>Powers</summary>
             <div class="toolbar-row">
@@ -59,8 +63,6 @@
               <button class="tool-btn" data-tool="freeze" type="button">Freeze</button>
               <button class="tool-btn" data-tool="orbit" type="button">Orbit</button>
               <button class="tool-btn" data-tool="paint" type="button">Paint</button>
-              <button class="tool-btn" data-tool="fold" type="button">Fold</button>
-              <button class="tool-btn" data-tool="unfold" type="button">Unfold</button>
             </div>
             <div class="toolbar-row sliders compact-sliders">
               <label>Radius <input id="power-radius" type="range" min="50" max="520" step="10" value="185" /></label>

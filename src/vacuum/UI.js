@@ -62,6 +62,8 @@ export class UI {
     this.library = document.getElementById('library');
     this.assetList = document.getElementById('asset-list');
     this.inspector = document.getElementById('inspector');
+    this.selectedPanel = document.getElementById('selected-panel');
+    this.selectedControls = document.getElementById('selected-controls');
     this.selectionBadge = document.getElementById('selection-badge');
     this.helpPanel = document.getElementById('help-panel');
     this.devPanel = document.getElementById('dev-panel');
@@ -228,6 +230,8 @@ export class UI {
     if (!body) {
       this.inspector.classList.add('hidden');
       this.inspector.innerHTML = '';
+      this.selectedPanel?.classList.add('hidden');
+      if (this.selectedControls) this.selectedControls.innerHTML = '';
       this.selectionBadge.classList.add('hidden');
       this.selectionBadge.innerHTML = '';
       this.inspectedId = null;
@@ -235,19 +239,27 @@ export class UI {
     }
     this.selectionBadge.classList.remove('hidden');
     this.selectionBadge.innerHTML = `<strong>${body.label}</strong><span>${body.category ?? body.type} selected</span>`;
-    if (document.body.classList.contains('inspector-collapsed')) return;
-    this.inspector.classList.remove('hidden');
     if (this.inspectedId !== body.id) this.buildInspector(body);
-    this.inspector.querySelector('[data-readout="mass"]').textContent = body.mass.toFixed(2);
-    this.inspector.querySelector('[data-readout="velocity"]').textContent = body.velocity.length().toFixed(1);
-    this.inspector.querySelector('[data-readout="spin"]').textContent = body.angularVelocity.toFixed(2);
-    this.inspector.querySelector('[data-readout="tidal"]').textContent = (body.tidalStress ?? 0).toFixed(2);
-    this.inspector.querySelector('[data-readout="heat"]').textContent = (body.heat ?? 0).toFixed(2);
-    this.inspector.querySelector('[data-readout="damage"]').textContent = (body.damage ?? 0).toFixed(2);
-    this.inspector.querySelector('[data-readout="depth"]').textContent = body.position.z.toFixed(1);
-    this.inspector.querySelector('[data-readout="w"]').textContent = (body.w ?? 0).toFixed(1);
-    this.inspector.querySelector('[data-readout="dilation"]').textContent = (body.timeDilation ?? 1).toFixed(2);
-    this.inspector.querySelector('[data-readout="emergent"]').textContent = this.emergentStatus(body);
+    if (document.body.classList.contains('inspector-collapsed')) {
+      this.inspector.classList.add('hidden');
+      return;
+    }
+    this.inspector.classList.remove('hidden');
+    this.setReadout('mass', body.mass.toFixed(2));
+    this.setReadout('velocity', body.velocity.length().toFixed(1));
+    this.setReadout('spin', body.angularVelocity.toFixed(2));
+    this.setReadout('tidal', (body.tidalStress ?? 0).toFixed(2));
+    this.setReadout('heat', (body.heat ?? 0).toFixed(2));
+    this.setReadout('damage', (body.damage ?? 0).toFixed(2));
+    this.setReadout('depth', body.position.z.toFixed(1));
+    this.setReadout('w', (body.w ?? 0).toFixed(1));
+    this.setReadout('dilation', (body.timeDilation ?? 1).toFixed(2));
+    this.setReadout('emergent', this.emergentStatus(body));
+  }
+
+  setReadout(name, value) {
+    const node = this.inspector.querySelector(`[data-readout="${name}"]`);
+    if (node) node.textContent = value;
   }
 
   updateScannerReadout() {
@@ -261,6 +273,7 @@ export class UI {
     const speed = body.velocity.length();
     this.inspector.innerHTML = `
       <h2>${body.label}</h2>
+      <span class="inspector-kind">${body.category} / ${body.materialProfile ?? 'unknown'}</span>
       <dl>
         <dt>Mass</dt><dd data-readout="mass">${body.mass.toFixed(2)}</dd>
         <dt>Velocity</dt><dd data-readout="velocity">${speed.toFixed(1)}</dd>
@@ -271,49 +284,59 @@ export class UI {
         <dt>Depth</dt><dd data-readout="depth">${body.position.z.toFixed(1)}</dd>
         <dt>W-Axis</dt><dd data-readout="w">${(body.w ?? 0).toFixed(1)}</dd>
         <dt>Time</dt><dd data-readout="dilation">${(body.timeDilation ?? 1).toFixed(2)}</dd>
-        <dt>Class</dt><dd>${body.category}</dd>
-        <dt>Material</dt><dd>${body.materialProfile ?? 'unknown'}</dd>
         <dt>Emergent</dt><dd data-readout="emergent">${this.emergentStatus(body)}</dd>
       </dl>
-      <h3>Physical</h3>
-      <div class="inspector-controls">
-        <label>Size <input data-prop="radius" type="range" min="1" max="90" step="0.5" value="${body.radius}"></label>
-        <label>Mass <input data-prop="mass" type="range" min="0" max="320" step="0.5" value="${body.mass}"></label>
-      </div>
-      <h3>Motion</h3>
-      <div class="inspector-controls">
-        <label>Spin <input data-prop="angularVelocity" type="range" min="-8" max="8" step="0.05" value="${body.angularVelocity}"></label>
-        <label>Depth <input data-prop="z" type="range" min="-420" max="420" step="2" value="${body.position.z}"></label>
-        <label>VX <input data-prop="vx" type="range" min="-260" max="260" step="1" value="${body.velocity.x}"></label>
-        <label>VY <input data-prop="vy" type="range" min="-260" max="260" step="1" value="${body.velocity.y}"></label>
-        <label>VZ <input data-prop="vz" type="range" min="-180" max="180" step="1" value="${body.velocity.z}"></label>
-        <label>W <input data-prop="w" type="range" min="-90" max="90" step="1" value="${body.w ?? 0}"></label>
-        <label>W Flow <input data-prop="wVelocity" type="range" min="-120" max="120" step="1" value="${body.wVelocity ?? 0}"></label>
-      </div>
-      <h3>Forces</h3>
-      <div class="inspector-controls">
-        <label>Charge <input data-prop="charge" type="range" min="-4" max="4" step="0.05" value="${body.charge ?? 0}"></label>
-        <label>Heat <input data-prop="heat" type="range" min="0" max="1" step="0.01" value="${body.heat ?? 0}"></label>
-      </div>
-      <h3>Visuals</h3>
-      <div class="inspector-controls">
-        <label>Glow <input data-prop="glow" type="range" min="0" max="3" step="0.05" value="${body.glow ?? 1}"></label>
-        <label>Field Stress <input data-prop="fieldStress" type="range" min="0" max="2" step="0.01" value="${body.fieldStress ?? 0}"></label>
-        ${body.type === 'comet' ? `
-          <label>Tail Length <input data-prop="tailLength" type="range" min="0" max="4" step="0.05" value="${body.tailLength ?? 1}"></label>
-          <label>Tail Width <input data-prop="tailWidth" type="range" min="0.1" max="3" step="0.05" value="${body.tailWidth ?? 1}"></label>
-          <label>Tail Opacity <input data-prop="tailOpacity" type="range" min="0" max="2" step="0.05" value="${body.tailOpacity ?? 1}"></label>
-        ` : ''}
-      </div>
+    `;
+    this.buildSelectedControls(body);
+  }
+
+  buildSelectedControls(body) {
+    if (!this.selectedPanel || !this.selectedControls) return;
+    this.selectedPanel.classList.remove('hidden');
+    this.selectedControls.innerHTML = `
+      <div class="selected-object-title"><strong>${body.label}</strong><span>${body.category}</span></div>
+      <details class="object-control-group" open>
+        <summary>Physical</summary>
+        <div class="inspector-controls">
+          <label>Size <input data-prop="radius" type="range" min="1" max="90" step="0.5" value="${body.radius}"></label>
+          <label>Mass <input data-prop="mass" type="range" min="0" max="320" step="0.5" value="${body.mass}"></label>
+        </div>
+      </details>
+      <details class="object-control-group">
+        <summary>Motion</summary>
+        <div class="inspector-controls">
+          <label>Spin <input data-prop="angularVelocity" type="range" min="-8" max="8" step="0.05" value="${body.angularVelocity}"></label>
+          <label>Depth <input data-prop="z" type="range" min="-420" max="420" step="2" value="${body.position.z}"></label>
+          <label>VX <input data-prop="vx" type="range" min="-260" max="260" step="1" value="${body.velocity.x}"></label>
+          <label>VY <input data-prop="vy" type="range" min="-260" max="260" step="1" value="${body.velocity.y}"></label>
+          <label>VZ <input data-prop="vz" type="range" min="-180" max="180" step="1" value="${body.velocity.z}"></label>
+          <label>W <input data-prop="w" type="range" min="-90" max="90" step="1" value="${body.w ?? 0}"></label>
+          <label>W Flow <input data-prop="wVelocity" type="range" min="-120" max="120" step="1" value="${body.wVelocity ?? 0}"></label>
+        </div>
+      </details>
+      <details class="object-control-group">
+        <summary>Energy & Visuals</summary>
+        <div class="inspector-controls">
+          <label>Charge <input data-prop="charge" type="range" min="-4" max="4" step="0.05" value="${body.charge ?? 0}"></label>
+          <label>Heat <input data-prop="heat" type="range" min="0" max="1" step="0.01" value="${body.heat ?? 0}"></label>
+          <label>Glow <input data-prop="glow" type="range" min="0" max="3" step="0.05" value="${body.glow ?? 1}"></label>
+          <label>Stress <input data-prop="fieldStress" type="range" min="0" max="2" step="0.01" value="${body.fieldStress ?? 0}"></label>
+          ${body.type === 'comet' ? `
+            <label>Tail Len <input data-prop="tailLength" type="range" min="0" max="4" step="0.05" value="${body.tailLength ?? 1}"></label>
+            <label>Tail Wid <input data-prop="tailWidth" type="range" min="0.1" max="3" step="0.05" value="${body.tailWidth ?? 1}"></label>
+            <label>Tail Op <input data-prop="tailOpacity" type="range" min="0" max="2" step="0.05" value="${body.tailOpacity ?? 1}"></label>
+          ` : ''}
+        </div>
+      </details>
       <div class="inspector-actions">
         <button data-action="mass-up">Mass +</button>
         <button data-action="mass-down">Mass -</button>
         <button data-action="velocity-down">Slow</button>
         <button data-action="velocity-up">Boost</button>
-        <button data-action="orbit-kick">Orbit Kick</button>
+        <button data-action="orbit-kick">Orbit</button>
         <button data-action="dust-ring">Dust Belt</button>
         <button data-action="tractor">Tractor</button>
-        <button data-action="goo-burst">Goo Burst</button>
+        <button data-action="goo-burst">Goo</button>
         <button data-action="explode">Burst</button>
         <button data-action="ignite">Ignite</button>
         <button data-action="binary">Binary</button>
@@ -323,18 +346,18 @@ export class UI {
         <button data-action="release">Release</button>
         <button data-action="z-down">Z -</button>
         <button data-action="z-up">Z +</button>
-        <button data-action="spin">Add Spin</button>
+        <button data-action="spin">Spin</button>
         <button data-action="stop">Stop</button>
         <button data-action="freeze">${body.frozen ? 'Unfreeze' : 'Freeze'}</button>
         <button data-action="trail">${body.showTrail ? 'Hide Trail' : 'Show Trail'}</button>
         <button data-action="delete">Delete</button>
       </div>
     `;
-    this.inspector.querySelectorAll('input[data-prop]').forEach((input) => {
+    this.selectedControls.querySelectorAll('input[data-prop]').forEach((input) => {
       input.title = INSPECTOR_HELP[input.dataset.prop] ?? 'Adjust this property in real time.';
       input.addEventListener('input', () => this.callbacks.inspectSet(input.dataset.prop, Number(input.value)));
     });
-    this.inspector.querySelectorAll('button').forEach((button) => {
+    this.selectedControls.querySelectorAll('button').forEach((button) => {
       button.addEventListener('click', () => this.callbacks.inspectAction(button.dataset.action));
     });
   }
