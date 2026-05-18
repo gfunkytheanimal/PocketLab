@@ -1457,23 +1457,30 @@ function applyMaterialTuning(body) {
   const glow = body.glow ?? 1;
   const heat = body.heat ?? 0;
   const stress = body.fieldStress ?? 0;
+  const damage = body.damage ?? 0;
   const boost = Math.max(0, glow - 1) + heat * 1.35 + stress * 0.45;
   const phase = body.phaseShift ?? 0;
-  const active = boost > 0.01 || phase > 0.02 || body.materialTuningActive;
+  const active = boost > 0.01 || phase > 0.02 || damage > 0.02 || body.materialTuningActive;
   if (!active) return;
 
-  body.materialTuningActive = boost > 0.01 || phase > 0.02;
+  body.materialTuningActive = boost > 0.01 || phase > 0.02 || damage > 0.02;
   const materials = cachedBodyMaterials(body);
   for (const material of materials) {
     material.userData.baseEmissiveIntensity ??= material.emissiveIntensity ?? 0;
     material.userData.baseOpacity ??= material.opacity ?? 1;
     if (material.emissive) material.userData.baseEmissive ??= material.emissive.clone();
+    if (material.color) material.userData.baseColor ??= material.color.clone();
     if (material.emissiveIntensity !== undefined) {
       material.emissiveIntensity = material.userData.baseEmissiveIntensity + boost;
+    }
+    if (material.color) {
+      material.color.copy(material.userData.baseColor);
+      if (damage > 0.04) material.color.lerp(new THREE.Color(0x4b3430), Math.min(0.62, damage * 0.7));
     }
     if (material.emissive) {
       material.emissive.copy(material.userData.baseEmissive);
       if (heat > 0.08) material.emissive.lerp(new THREE.Color(0xff8a32), Math.min(0.75, heat * 0.75));
+      if (damage > 0.18) material.emissive.lerp(new THREE.Color(0xff4b2f), Math.min(0.35, damage * 0.28));
     }
     if (material.opacity !== undefined && body.category !== 'singularity') {
       const faded = phase > 0.25 ? Math.max(0.42, material.userData.baseOpacity * (1 - phase * 0.28)) : material.userData.baseOpacity;
@@ -2136,6 +2143,7 @@ function serializeBody(body) {
     glow: body.glow,
     fieldStress: body.fieldStress,
     shockwave: body.shockwave,
+    damage: body.damage,
     w: body.w,
     wVelocity: body.wVelocity,
     timeDilation: body.timeDilation,
@@ -2163,7 +2171,7 @@ function hydrateBody(body, saved) {
   body.angularVelocity = saved.angularVelocity ?? body.angularVelocity;
   body.frozen = Boolean(saved.frozen);
   body.showTrail = saved.showTrail ?? body.showTrail;
-  for (const prop of ['heat', 'glow', 'fieldStress', 'shockwave', 'w', 'wVelocity', 'timeDilation', 'phaseShift', 'atmosphere', 'water', 'craters', 'surfaceMissions', 'habitability', 'biosphere', 'tailLength', 'tailWidth', 'tailOpacity', 'accretion']) {
+  for (const prop of ['heat', 'glow', 'fieldStress', 'shockwave', 'damage', 'w', 'wVelocity', 'timeDilation', 'phaseShift', 'atmosphere', 'water', 'craters', 'surfaceMissions', 'habitability', 'biosphere', 'tailLength', 'tailWidth', 'tailOpacity', 'accretion']) {
     if (saved[prop] !== undefined) body[prop] = saved[prop];
   }
   body.group.scale.setScalar(body.radius / body.baseRadius);

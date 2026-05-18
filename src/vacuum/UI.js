@@ -235,6 +235,7 @@ export class UI {
     this.inspector.querySelector('[data-readout="spin"]').textContent = body.angularVelocity.toFixed(2);
     this.inspector.querySelector('[data-readout="tidal"]').textContent = (body.tidalStress ?? 0).toFixed(2);
     this.inspector.querySelector('[data-readout="heat"]').textContent = (body.heat ?? 0).toFixed(2);
+    this.inspector.querySelector('[data-readout="damage"]').textContent = (body.damage ?? 0).toFixed(2);
     this.inspector.querySelector('[data-readout="depth"]').textContent = body.position.z.toFixed(1);
     this.inspector.querySelector('[data-readout="w"]').textContent = (body.w ?? 0).toFixed(1);
     this.inspector.querySelector('[data-readout="dilation"]').textContent = (body.timeDilation ?? 1).toFixed(2);
@@ -251,6 +252,7 @@ export class UI {
         <dt>Spin</dt><dd data-readout="spin">${body.angularVelocity.toFixed(2)}</dd>
         <dt>Tidal</dt><dd data-readout="tidal">${(body.tidalStress ?? 0).toFixed(2)}</dd>
         <dt>Heat</dt><dd data-readout="heat">${(body.heat ?? 0).toFixed(2)}</dd>
+        <dt>Damage</dt><dd data-readout="damage">${(body.damage ?? 0).toFixed(2)}</dd>
         <dt>Depth</dt><dd data-readout="depth">${body.position.z.toFixed(1)}</dd>
         <dt>W-Axis</dt><dd data-readout="w">${(body.w ?? 0).toFixed(1)}</dd>
         <dt>Time</dt><dd data-readout="dilation">${(body.timeDilation ?? 1).toFixed(2)}</dd>
@@ -358,6 +360,7 @@ export class UI {
     if (body.atmosphere) bits.push(`atmosphere ${(body.atmosphere * 100).toFixed(0)}%`);
     if (body.water) bits.push(`${body.water > 0.45 ? 'ocean' : 'ice'} ${(body.water * 100).toFixed(0)}%`);
     if (body.craters) bits.push(`${body.craters} crater${body.craters === 1 ? '' : 's'}`);
+    if (body.damage) bits.push(`damage ${(body.damage * 100).toFixed(0)}%`);
     if (body.surfaceMissions) bits.push(`${body.surfaceMissions} surface contact${body.surfaceMissions === 1 ? '' : 's'}`);
     if (body.habitability) bits.push(`habitable ${(body.habitability * 100).toFixed(0)}%`);
     if (body.biosphere) bits.push(`biosphere ${(body.biosphere * 100).toFixed(0)}%`);

@@ -961,11 +961,20 @@ export class PhysicsEngine {
 
   emitImpact(a, b, normal, speed) {
     if (speed < 8) return;
+    const severity = Math.min(1, speed / 130);
+    for (const body of [a, b]) {
+      if (body.category === 'singularity' || body.category === 'field') continue;
+      const vulnerability = body.category === 'spacecraft' ? 1.2 : body.category === 'crew' ? 1.4 : body.category === 'planetary' ? 0.22 : 0.8;
+      body.damage = Math.min(1, (body.damage ?? 0) + severity * vulnerability * 0.12);
+      if (body.damage > 0.55 && body.category === 'spacecraft') body.label = body.label.includes('Damaged') ? body.label : `Damaged ${body.label}`;
+      if (body.damage > 0.7 && body.category === 'crew') body.label = body.label.includes('Injured') ? body.label : `Injured ${body.label}`;
+    }
     this.state.events?.push({
       type: 'impact',
       position: a.position.clone().lerp(b.position, 0.5),
       normal: normal.clone(),
       speed,
+      severity,
       aType: a.type,
       bType: b.type,
       aCategory: a.category,
