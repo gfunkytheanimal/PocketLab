@@ -997,6 +997,23 @@ function spawnPreset(name) {
     ui.status.textContent = 'binary star scenario seeded';
     setCameraView('iso');
   }
+  if (name === 'harmonic') {
+    applyPhysicsPreset('orbit');
+    const star = spawnWith('star', 0, 0, 0, 0, 0, 0);
+    star.label = 'Harmonic Star';
+    const inner = spawnWith('planet', 118, 0, 20, 0, 88, 0);
+    inner.label = 'Inner Resonant Planet';
+    const outer = spawnWith('mars', -214, 0, -34, 0, -62, 0);
+    outer.label = 'Outer Resonant Planet';
+    const moon = spawnWith('moon', 144, 0, 28, 0, 117, 2);
+    moon.label = 'Captured Harmonic Moon';
+    spawnWith('comet', -330, -96, 78, 128, 44, -8);
+    spawnWith('hubble', 0, 245, -70, -70, 0, 8);
+    seedSolarWind(star);
+    seedCaptureRing(inner, 36);
+    ui.status.textContent = 'solar harmonic playground seeded';
+    setCameraView('cinematic');
+  }
   if (name === 'first-contact') {
     spawnWith('ufo', 0, 0, 80, 0, 0, 0);
     spawnWith('astronaut', -82, -34, 36, 26, 8, 8);
