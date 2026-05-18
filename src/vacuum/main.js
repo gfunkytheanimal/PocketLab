@@ -95,7 +95,7 @@ const state = {
   boundsSize: 820,
   depthSpread: 140,
   cameraMode: 'iso',
-  maxDust: 260,
+  maxDust: 150,
   renderScale: 1.7,
   bloomStrength: 0.62,
   bloomRadius: 0.72,
@@ -416,9 +416,11 @@ function consumePhysicsEvents() {
         body.glow = Math.max(body.glow ?? 1, 1.55);
         body.heat = Math.min(1, (body.heat ?? 0) + 0.2);
       }
-      seedFineDust(event.position, 28, 0xff7a24, 92, 0.045, true, 'Solar Ash');
-      particles.burst(event.position, 0xff9d42, 56, 110, 'radiation');
-      nebula.burst(event.position, { count: 54, colorA: '#ff7a24', colorB: '#fff0a8', speed: 96, life: 1.1, radius: [4, 13], drift: 26 });
+      seedFineDust(event.position, 6, 0xff7a24, 78, 0.012, true, 'Solar Ash');
+      particles.burst(event.position, 0xff9d42, 14, 85, 'radiation');
+      if (state.showFields || state.showTopology) {
+        nebula.burst(event.position, { count: 18, colorA: '#ff7a24', colorB: '#fff0a8', speed: 74, life: 0.9, radius: [3, 10], drift: 18 });
+      }
       ui.status.textContent = `${event.sourceType ?? 'rock'} surface scorched by star`;
       continue;
     }
@@ -429,8 +431,10 @@ function consumePhysicsEvents() {
         heavy.shockwave = Math.max(heavy.shockwave ?? 0, 0.16);
         light.shockwave = Math.max(light.shockwave ?? 0, 0.28);
       }
-      particles.burst(event.position, 0x72fff0, Math.round(22 + (event.severity ?? 0.5) * 24), 58, 'spark');
-      nebula.stream(event.position, randomDirection(), { colorA: '#72fff0', colorB: '#ffffff', count: 26, speed: 52, life: 1.2, radius: [2, 9], drift: 18 });
+      particles.burst(event.position, 0x72fff0, state.showFields || state.showTopology ? Math.round(16 + (event.severity ?? 0.5) * 16) : 6, 46, 'spark');
+      if (state.showFields || state.showTopology) {
+        nebula.stream(event.position, randomDirection(), { colorA: '#72fff0', colorB: '#ffffff', count: 14, speed: 44, life: 0.9, radius: [2, 7], drift: 12 });
+      }
       ui.status.textContent = `${event.lightType ?? 'body'} found a resonant path`;
       continue;
     }
@@ -447,9 +451,12 @@ function consumePhysicsEvents() {
           host.atmosphere = Math.min(1, (host.atmosphere ?? 0) + 0.12);
         }
       }
-      particles.burst(event.position, 0x72fff0, 42, 72, 'spark');
-      nebula.burst(event.position, { count: 56, colorA: '#72fff0', colorB: '#ffffff', speed: 72, life: 1.25, radius: [3, 13], drift: 22 });
-      if (host) seedCaptureRing(host, event.radius ?? host.radius * 5);
+      const showCaptureRing = state.showFields || state.showTopology || (host?.type === 'jupiter' && (host.satelliteCount ?? 0) >= 3);
+      particles.burst(event.position, 0x72fff0, showCaptureRing ? 30 : 12, 64, 'spark');
+      if (showCaptureRing) {
+        nebula.burst(event.position, { count: 26, colorA: '#72fff0', colorB: '#ffffff', speed: 64, life: 1.0, radius: [2, 9], drift: 16 });
+        if (host) seedCaptureRing(host, event.radius ?? host.radius * 5);
+      }
       ui.status.textContent = `${event.guestType ?? 'body'} captured by ${event.hostType ?? 'planet'}`;
       continue;
     }
@@ -919,6 +926,7 @@ function shearRecipe(profile, category) {
 }
 
 function spawn(type, position) {
+  if (type.startsWith('kit-')) return spawnSystemKit(type, position);
   const body = factory.create(type, position);
   state.bodies.push(body);
   state.selected = body;
@@ -934,6 +942,107 @@ function spawn(type, position) {
     seedFineDust(position, 34, 0x9fefff, 42, 0.04, false);
   }
   return body;
+}
+
+function spawnSystemKit(type, origin) {
+  const before = state.bodies.length;
+  const spawned = [];
+  const add = (bodyType, offset, velocity = new THREE.Vector3(), label = null) => {
+    const body = factory.create(bodyType, origin.clone().add(offset));
+    body.velocity.copy(velocity);
+    if (label) body.label = label;
+    body.trail.length = 0;
+    body.showTrail = !['dust', 'debris'].includes(body.category);
+    state.bodies.push(body);
+    spawned.push(body);
+    return body;
+  };
+
+  const orbit = (center, body, clockwise = 1, boost = 1) => {
+    const radial = body.position.clone().sub(center.position);
+    const distance = Math.max(18, radial.length());
+    radial.normalize();
+    const tangent = new THREE.Vector3(-radial.y, radial.x, radial.z * 0.18).normalize();
+    const speed = Math.sqrt(Math.max(0.01, state.gravityScale * Math.max(1, center.mass) / distance)) * 8.8 * boost * clockwise;
+    body.velocity.copy(center.velocity).addScaledVector(tangent, speed);
+  };
+
+  if (type === 'kit-solar') {
+    const star = add('star', new THREE.Vector3(0, 0, 0), new THREE.Vector3(), 'Kit Star');
+    const inner = add('mars', new THREE.Vector3(118, 0, 18), new THREE.Vector3(), 'Inner Rust World');
+    const world = add('planet', new THREE.Vector3(210, 18, -26), new THREE.Vector3(), 'Blue Seed World');
+    const giant = add('jupiter', new THREE.Vector3(-330, -42, 34), new THREE.Vector3(), 'Outer Giant');
+    const moon = add('moon', world.position.clone().sub(origin).add(new THREE.Vector3(34, 24, 12)), new THREE.Vector3(), 'Captured Moon');
+    orbit(star, inner, 1, 1.15);
+    orbit(star, world, 1, 0.96);
+    orbit(star, giant, -1, 0.72);
+    orbit(world, moon, 1, 1.25);
+    world.atmosphere = 0.18;
+    world.water = 0.12;
+    world.worldSurvey = 'young seeded system';
+    addAtmosphereShell(world, 0x72dfff);
+    seedFineDust(origin, 8, 0xffd36b, 82, 0.005, false, 'System Microdust');
+  }
+
+  if (type === 'kit-moon') {
+    const planet = add('planet', new THREE.Vector3(0, 0, 0), new THREE.Vector3(), 'Primary World');
+    const moon = add('moon', new THREE.Vector3(92, 0, 18), new THREE.Vector3(), 'Tuned Moon');
+    const station = add('station', new THREE.Vector3(-118, -28, 38), new THREE.Vector3(), 'Orbital Outpost');
+    orbit(planet, moon, 1, 1.08);
+    orbit(planet, station, -1, 1.18);
+    planet.satelliteCount = 2;
+    planet.worldSurvey = 'stable moon architecture';
+    addSurfaceMark(planet, planet.position.clone().add(new THREE.Vector3(planet.radius, 0, 0)), 0xb8d8ff, 0.18, 'landing-mark');
+    seedFineDust(origin, 5, 0x72dfff, 64, 0.005, false, 'Orbital Glint');
+  }
+
+  if (type === 'kit-binary') {
+    const a = add('star', new THREE.Vector3(-86, 0, -20), new THREE.Vector3(0, -44, 0), 'Binary Alpha');
+    const b = add('star', new THREE.Vector3(86, 0, 20), new THREE.Vector3(0, 44, 0), 'Binary Beta');
+    const planet = add('planet', new THREE.Vector3(0, 238, 50), new THREE.Vector3(-82, 0, -10), 'Circumbinary World');
+    a.mass = 96;
+    b.mass = 82;
+    orbit(a, planet, 1, 0.72);
+    planet.worldSurvey = 'circumbinary candidate';
+    seedFineDust(origin, 9, 0xffb35d, 96, 0.006, true, 'Binary Glint');
+  }
+
+  if (type === 'kit-comets') {
+    const star = add('star', new THREE.Vector3(-80, 0, 0), new THREE.Vector3(), 'Nursery Star');
+    const gas = add('gas', new THREE.Vector3(130, -20, 24), new THREE.Vector3(-18, 24, 4), 'Cold Gas Veil');
+    const cometA = add('comet', new THREE.Vector3(-290, -110, 52), new THREE.Vector3(120, 52, -10), 'Long-Period Comet');
+    const cometB = add('comet', new THREE.Vector3(260, 135, -44), new THREE.Vector3(-138, -34, 12), 'Returning Comet');
+    const cometC = add('comet', new THREE.Vector3(70, -240, 86), new THREE.Vector3(44, 118, -22), 'Icy Seed');
+    for (const comet of [cometA, cometB, cometC]) {
+      comet.tailLength = 1.45;
+      comet.tailOpacity = 1.18;
+    }
+    gas.heat = 0.12;
+    star.fieldStress = 0.35;
+    seedFineDust(origin, 32, 0xcffcff, 124, 0.006, false, 'Comet Mist');
+  }
+
+  if (type === 'kit-feeding') {
+    const hole = add('blackhole', new THREE.Vector3(0, 0, 0), new THREE.Vector3(), 'Feeding Horizon');
+    const gas = add('gas', new THREE.Vector3(138, -20, 30), new THREE.Vector3(-38, 34, 4), 'Falling Gas Cloud');
+    const debris = add('debris', new THREE.Vector3(-130, 44, -24), new THREE.Vector3(46, -24, 8), 'Loose Rubble');
+    const comet = add('comet', new THREE.Vector3(230, 132, 64), new THREE.Vector3(-84, -46, -12), 'Doomed Comet');
+    hole.accretion = 1.5;
+    gas.fieldStress = 0.55;
+    debris.showTrail = false;
+    comet.tailLength = 1.7;
+    seedFineDust(origin, 34, 0xff9d42, 132, 0.01, true, 'Accretion Mist');
+  }
+
+  state.selected = spawned[0] ?? null;
+  ui.status.textContent = `${systemKitLabel(type)} seeded ${state.bodies.length - before} live objects`;
+  ui.updateInspector();
+  state.cameraShake = Math.max(state.cameraShake, 0.8);
+  return spawned[0] ?? null;
+}
+
+function systemKitLabel(type) {
+  return ASSETS.find((asset) => asset.type === type)?.label ?? 'System kit';
 }
 
 function randomSpawnPosition() {
@@ -1911,14 +2020,15 @@ function seedFineDust(position, count, color, speed, mass = 0.06, hot = false, l
   const allowed = Math.max(0, Math.min(count, state.maxDust - liveDust));
   for (let i = 0; i < allowed; i++) {
     const dir = randomDirection();
-    const dust = factory.create('dust', position.clone().addScaledVector(dir, 4 + Math.random() * 30));
+    const dust = factory.create('dust', position.clone().addScaledVector(dir, 10 + Math.random() * 58));
     dust.label = label ?? (hot ? 'Heated Space Dust' : 'Space Dust');
-    dust.mass = mass * (0.45 + Math.random() * 0.85);
-    dust.radius = 0.55 + Math.random() * 0.9;
+    dust.mass = mass * (0.25 + Math.random() * 0.55);
+    dust.radius = 0.22 + Math.random() * 0.46;
     dust.baseRadius = 2;
     dust.visualScale = dust.radius / dust.baseRadius;
     dust.heat = hot ? 1 : 0.25;
     dust.isDust = true;
+    dust.showTrail = false;
     tintBody(dust, jitterColor(color, 0.16));
     dust.velocity.copy(dir.multiplyScalar(speed * (0.25 + Math.random() * 0.95)));
     dust.angularVelocity = (Math.random() - 0.5) * 1.4;
@@ -1937,10 +2047,10 @@ function seedDirectedDust(position, direction, count, color, speed, mass = 0.06,
   for (let i = 0; i < allowed; i++) {
     const spread = sideA.clone().multiplyScalar((Math.random() - 0.5) * 0.75).addScaledVector(sideB, (Math.random() - 0.5) * 0.75);
     const dir = forward.clone().add(spread).normalize();
-    const dust = factory.create('dust', position.clone().addScaledVector(dir, 8 + Math.random() * 36));
+    const dust = factory.create('dust', position.clone().addScaledVector(dir, 14 + Math.random() * 58));
     dust.label = label ?? 'Directed Space Dust';
-    dust.mass = mass * (0.35 + Math.random() * 0.75);
-    dust.radius = 0.45 + Math.random() * 0.8;
+    dust.mass = mass * (0.22 + Math.random() * 0.5);
+    dust.radius = 0.2 + Math.random() * 0.42;
     dust.baseRadius = 2;
     dust.visualScale = dust.radius / dust.baseRadius;
     dust.heat = 0.65 + Math.random() * 0.35;
@@ -1954,7 +2064,7 @@ function seedDirectedDust(position, direction, count, color, speed, mass = 0.06,
 }
 
 function seedCaptureRing(host, radius) {
-  const count = Math.min(34, Math.max(14, Math.round(radius / 10)));
+  const count = Math.min(14, Math.max(5, Math.round(radius / 22)));
   const color = host.type === 'mars' ? 0xff9d62 : host.type === 'jupiter' ? 0xffd39a : 0x72fff0;
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2 + Math.random() * 0.08;
@@ -1962,8 +2072,8 @@ function seedCaptureRing(host, radius) {
     const position = host.position.clone().add(new THREE.Vector3(Math.cos(a) * radius, Math.sin(a) * radius, lift));
     const dust = factory.create('dust', position);
     dust.label = 'Capture Spark';
-    dust.mass = 0.025 + Math.random() * 0.025;
-    dust.radius = 0.42 + Math.random() * 0.55;
+    dust.mass = 0.006 + Math.random() * 0.012;
+    dust.radius = 0.2 + Math.random() * 0.28;
     dust.baseRadius = 2;
     dust.visualScale = dust.radius / dust.baseRadius;
     dust.heat = 0.35;
@@ -1972,7 +2082,7 @@ function seedCaptureRing(host, radius) {
     tintBody(dust, jitterColor(color, 0.12));
     const tangent = new THREE.Vector3(-Math.sin(a), Math.cos(a), lift * 0.002).normalize();
     dust.velocity.copy(host.velocity).addScaledVector(tangent, 18 + Math.random() * 24);
-    dust.lifetime = 8 + Math.random() * 8;
+    dust.lifetime = 5 + Math.random() * 7;
     state.bodies.push(dust);
   }
 }
@@ -2606,6 +2716,7 @@ function reset(options = {}) {
   filaments.clear();
   effects.clearAll();
   paintLayer.clear();
+  if (!options.preserveFossils) nebulaBackground.clearFossils();
   paintCursor.visible = false;
   controls.target.set(0, 0, 0);
   controls.minDistance = 32;

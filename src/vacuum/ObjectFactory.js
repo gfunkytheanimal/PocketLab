@@ -433,7 +433,7 @@ export class ObjectFactory {
     if (asset.type === 'moon') {
       const terminator = new THREE.Mesh(
         new THREE.SphereGeometry(asset.radius * 1.01, 36, 18),
-        new THREE.MeshBasicMaterial({ color: 0x0a0d13, transparent: true, opacity: 0.26, blending: THREE.MultiplyBlending })
+        new THREE.MeshBasicMaterial({ color: 0x0a0d13, transparent: true, opacity: 0.26, blending: THREE.NormalBlending })
       );
       terminator.name = 'moon-terminator';
       terminator.position.x = -asset.radius * 0.16;

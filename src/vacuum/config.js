@@ -29,7 +29,12 @@ export const ASSETS = [
   { type: 'dust', category: 'dust', label: 'Space Dust', icon: '*', mass: 0.08, radius: 2, color: 0x9fefff, emissive: 0x6cecff, charge: 0.18 },
   { type: 'debris', category: 'debris', label: 'Debris Rocks', icon: 'D', mass: 1.5, radius: 5, color: 0x9a8171, emissive: 0x22160f },
   { type: 'laser', category: 'energy', label: 'Light Beam', icon: 'L', mass: 0.2, radius: 4, color: 0xff335c, emissive: 0xff2244 },
-  { type: 'mystery', category: 'spacecraft', label: 'Lunar Module', icon: 'Y', mass: 26, radius: 14, color: 0x78ff7a, emissive: 0x34ff6d }
+  { type: 'mystery', category: 'spacecraft', label: 'Lunar Module', icon: 'Y', mass: 26, radius: 14, color: 0x78ff7a, emissive: 0x34ff6d },
+  { type: 'kit-solar', category: 'kit', label: 'Living Solar System', icon: 'S', mass: 0, radius: 150, color: 0xffd36b, emissive: 0xff8a22 },
+  { type: 'kit-moon', category: 'kit', label: 'Moon System', icon: 'O', mass: 0, radius: 95, color: 0x72dfff, emissive: 0x0f6a8d },
+  { type: 'kit-binary', category: 'kit', label: 'Binary Dance', icon: 'B', mass: 0, radius: 150, color: 0xffb35d, emissive: 0xff6a32 },
+  { type: 'kit-comets', category: 'kit', label: 'Comet Nursery', icon: 'K', mass: 0, radius: 170, color: 0xcffcff, emissive: 0x2fc8ff },
+  { type: 'kit-feeding', category: 'kit', label: 'Feeding Black Hole', icon: 'F', mass: 0, radius: 180, color: 0xff9d42, emissive: 0x2aa7ff }
 ];
 
 export const PRESETS = {
@@ -59,7 +64,12 @@ export const PRESETS = {
   dust: { velocity: [0, 0, 0], angular: 0 },
   debris: { velocity: [0, 0, 0], angular: 0 },
   laser: { velocity: [0, 0, 0], angular: 0 },
-  mystery: { velocity: [0, 0, 0], angular: 0 }
+  mystery: { velocity: [0, 0, 0], angular: 0 },
+  'kit-solar': { velocity: [0, 0, 0], angular: 0 },
+  'kit-moon': { velocity: [0, 0, 0], angular: 0 },
+  'kit-binary': { velocity: [0, 0, 0], angular: 0 },
+  'kit-comets': { velocity: [0, 0, 0], angular: 0 },
+  'kit-feeding': { velocity: [0, 0, 0], angular: 0 }
 };
 
 export const MATERIAL_PROFILES = {
@@ -89,5 +99,10 @@ export const MATERIAL_PROFILES = {
   dust: 'dust',
   debris: 'metal',
   laser: 'energy',
-  mystery: 'metal'
+  mystery: 'metal',
+  'kit-solar': 'kit',
+  'kit-moon': 'kit',
+  'kit-binary': 'kit',
+  'kit-comets': 'kit',
+  'kit-feeding': 'kit'
 };

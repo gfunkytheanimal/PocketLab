@@ -82,7 +82,7 @@ export class UI {
     for (const [group, assets] of groups) {
       const details = document.createElement('details');
       details.className = 'asset-section';
-      details.open = ['Core Bodies', 'Spacecraft'].includes(group);
+      details.open = ['Core Bodies', 'Living Systems', 'Spacecraft'].includes(group);
       details.innerHTML = `<summary>${group}</summary>`;
       const sectionList = document.createElement('div');
       sectionList.className = 'asset-section-list';
@@ -353,7 +353,12 @@ export class UI {
       dust: 'motes',
       debris: 'fragments',
       laser: 'beam',
-      mystery: 'lander'
+      mystery: 'lander',
+      'kit-solar': 'premade orbit',
+      'kit-moon': 'stable capture',
+      'kit-binary': 'paired motion',
+      'kit-comets': 'icy swarm',
+      'kit-feeding': 'danger setup'
     };
     return hints[type] ?? 'asset';
   }
@@ -379,6 +384,7 @@ export class UI {
   assetGroup(asset) {
     if (['astronaut', 'alien'].includes(asset.type)) return 'Crew';
     if (['planet', 'mars', 'jupiter', 'moon', 'star', 'blackhole'].includes(asset.type)) return 'Core Bodies';
+    if (asset.category === 'kit') return 'Living Systems';
     if (['comet', 'asteroid', 'dust', 'debris', 'gas'].includes(asset.type)) return 'Matter & Fields';
     if (['magnet', 'portal', 'laser'].includes(asset.type)) return 'Forces & Energy';
     return 'Spacecraft';

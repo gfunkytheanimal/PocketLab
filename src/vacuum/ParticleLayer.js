@@ -80,7 +80,7 @@ export class ParticleLayer {
       this.colors[idx * 3] = c.r;
       this.colors[idx * 3 + 1] = c.g;
       this.colors[idx * 3 + 2] = c.b;
-      this.sizes[idx] = 7 + Math.random() * 12;
+      this.sizes[idx] = 4 + Math.random() * 8;
       this.alpha[idx] = 0.92;
       this.mode[idx] = modeForKind(kind);
       this.velocities[idx].copy(dir);
@@ -141,7 +141,7 @@ export class ParticleLayer {
       if (body.type === 'gas' && Math.random() < dt * 18) {
         this.emitOne(body.position.clone().add(randomDirection().multiplyScalar(body.radius * Math.random())), randomDirection(), body.heat > 0.4 ? 0xffb35d : 0x9b7cff, 22, 'gas');
       }
-      if (body.type === 'star' && Math.random() < dt * 34) {
+      if (body.type === 'star' && Math.random() < dt * 12) {
         const dir = randomDirection();
         const pos = body.position.clone().add(dir.clone().multiplyScalar(body.radius * (1.1 + Math.random() * 0.35)));
         this.emitOne(pos, dir, Math.random() > 0.3 ? 0xffd86b : 0xff6838, 38 + body.fieldStress * 80, 'radiation');
@@ -185,7 +185,7 @@ export class ParticleLayer {
     this.colors[idx * 3] = c.r;
     this.colors[idx * 3 + 1] = c.g;
     this.colors[idx * 3 + 2] = c.b;
-    this.sizes[idx] = kind === 'accretion' ? 10 : kind === 'radiation' ? 8 : kind === 'gas' ? 9 : 6;
+    this.sizes[idx] = kind === 'accretion' ? 8 : kind === 'radiation' ? 5.5 : kind === 'gas' ? 7 : 4.5;
     this.alpha[idx] = kind === 'radiation' ? 0.82 : 0.9;
     this.mode[idx] = modeForKind(kind);
     this.velocities[idx].copy(direction).multiplyScalar(speed * (0.35 + Math.random() * 0.9));
