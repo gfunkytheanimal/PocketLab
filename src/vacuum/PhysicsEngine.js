@@ -354,6 +354,24 @@ export class PhysicsEngine {
             severity: 1 - dist / (reach * 0.48)
           });
         }
+        if (['planet', 'mars', 'moon'].includes(other.type) && dist > reach * 0.34 && dist < reach * 0.74) {
+          const band = 1 - Math.abs(dist - reach * 0.54) / (reach * 0.2);
+          const score = Math.max(0, band);
+          other.habitability = Math.min(1, (other.habitability ?? 0) + score * 0.0025);
+          other.glow = Math.max(other.glow ?? 1, 1 + score * 0.08);
+          other.fieldStress = Math.max(other.fieldStress ?? 0, score * 0.18);
+          if (other.habitability > 0.18 && (other.habitableCooldown ?? 0) <= 0) {
+            other.habitableCooldown = 2.8;
+            star.habitableCooldown = 1.2;
+            this.state.events?.push({
+              type: 'habitable-bloom',
+              position: other.position.clone(),
+              planetId: other.id,
+              planetType: other.type,
+              severity: Math.min(1, other.habitability + score * 0.35)
+            });
+          }
+        }
         if (other.type === 'comet') {
           const falloff = 1 - dist / reach;
           other.heat = Math.min(1, (other.heat ?? 0) + falloff * 0.08);
@@ -557,6 +575,35 @@ export class PhysicsEngine {
       return false;
     }
     if (planet && impactor && this.readyForReaction(planet, impactor)) {
+      if (impactor.category === 'spacecraft' && planet.type !== 'jupiter') {
+        const speed = impactor.velocity.clone().sub(planet.velocity).length();
+        const severity = Math.min(1, 0.18 + speed / 95 + impactor.mass / Math.max(28, planet.mass));
+        planet.surfaceMissions = (planet.surfaceMissions ?? 0) + 1;
+        planet.fieldStress = Math.max(planet.fieldStress ?? 0, severity * 0.55);
+        planet.heat = Math.min(1, (planet.heat ?? 0) + severity * 0.12);
+        impactor.crashed = true;
+        impactor.heat = Math.max(impactor.heat ?? 0, severity);
+        impactor.shockwave = Math.max(impactor.shockwave ?? 0, severity);
+        if (speed > 70) impactor.toRemove = true;
+        else {
+          const impactDir = impactor.position.clone().sub(planet.position);
+          if (impactDir.lengthSq() < 0.001) impactDir.copy(normal);
+          impactor.velocity.lerp(planet.velocity, 0.82);
+          impactor.position.copy(planet.position).addScaledVector(impactDir.normalize(), this.effectiveRadius(planet) + this.effectiveRadius(impactor) + 1);
+        }
+        this.cooldown(planet, impactor, 1.35);
+        this.state.events?.push({
+          type: speed > 70 ? 'spacecraft-crash' : 'spacecraft-landing',
+          position: impactor.position.clone().lerp(planet.position, 0.38),
+          planetId: planet.id,
+          craftId: impactor.id,
+          planetType: planet.type,
+          craftType: impactor.type,
+          craftLabel: impactor.label,
+          severity
+        });
+        return true;
+      }
       if (impactor.type === 'comet') {
         const impactDir = impactor.position.clone().sub(planet.position);
         if (impactDir.lengthSq() < 0.001) impactDir.copy(normal);
@@ -818,6 +865,10 @@ export class PhysicsEngine {
       position: small.position.clone(),
       smallId: small.id,
       largeId: large.id,
+      smallType: small.type,
+      largeType: large.type,
+      smallCategory: small.category,
+      largeCategory: large.category,
       smallLabel: small.label,
       largeLabel: large.label
     });

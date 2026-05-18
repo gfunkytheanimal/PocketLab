@@ -510,8 +510,49 @@ function consumePhysicsEvents() {
       continue;
     }
     if (event.type === 'stick') {
+      const large = state.bodies.find((item) => item.id === event.largeId);
+      if (large && event.largeCategory === 'planetary') {
+        large.surfaceMissions = (large.surfaceMissions ?? 0) + 1;
+        addSurfaceMark(large, event.position, event.smallCategory === 'spacecraft' ? 0xb8d8ff : 0x8ff7ff, event.smallCategory === 'spacecraft' ? 0.22 : 0.14, event.smallCategory === 'spacecraft' ? 'landing-mark' : 'contact-mark');
+      }
       particles.burst(event.position, 0x8ff7ff, 18, 36, 'spark');
       ui.status.textContent = `${event.smallLabel} stuck to ${event.largeLabel}`;
+      continue;
+    }
+    if (event.type === 'spacecraft-landing' || event.type === 'spacecraft-crash') {
+      const planet = state.bodies.find((item) => item.id === event.planetId);
+      const craft = state.bodies.find((item) => item.id === event.craftId);
+      const severity = event.severity ?? 0.45;
+      const crash = event.type === 'spacecraft-crash';
+      if (planet) {
+        planet.label = planet.label.includes('Explored') || planet.label.includes('Wrecked') ? planet.label : `${crash ? 'Wrecked' : 'Explored'} ${planet.label}`;
+        planet.shockwave = Math.max(planet.shockwave ?? 0, crash ? 0.72 : 0.28);
+        addSurfaceMark(planet, event.position, crash ? 0xff9d42 : 0xb8d8ff, crash ? 0.36 + severity * 0.35 : 0.24, crash ? 'crash-mark' : 'landing-mark');
+      }
+      if (craft && crash) {
+        craft.toRemove = true;
+        seedFragments(event.position, craft.velocity, Math.min(1, 0.5 + severity * 0.5), 'spacecraft', [0xb8d8ff, 0xf2fbff, 0xffb36b], `${event.craftLabel ?? 'Craft'} Wreckage`);
+      }
+      seedFineDust(event.position, Math.floor(22 + severity * 36), crash ? 0xff9d42 : 0xb8d8ff, 72 + severity * 90, crash ? 0.055 : 0.028, crash, crash ? 'Impact Smoke' : 'Landing Frost');
+      particles.burst(event.position, crash ? 0xff9d42 : 0xb8d8ff, Math.floor(34 + severity * 52), crash ? 140 : 70, crash ? 'spark' : 'gas');
+      nebula.burst(event.position, { count: Math.floor(38 + severity * 50), colorA: crash ? '#ff9d42' : '#b8d8ff', colorB: crash ? '#ffffff' : '#72fff0', speed: crash ? 116 : 62, life: crash ? 1.1 : 1.4, radius: crash ? [4, 14] : [3, 10], drift: crash ? 28 : 18 });
+      if (crash) state.cameraShake = Math.max(state.cameraShake, 1.4 + severity * 2.4);
+      ui.status.textContent = crash ? `${event.craftLabel ?? 'spacecraft'} crashed into ${event.planetType ?? 'planet'}` : `${event.craftLabel ?? 'spacecraft'} touched down`;
+      continue;
+    }
+    if (event.type === 'habitable-bloom') {
+      const planet = state.bodies.find((item) => item.id === event.planetId);
+      const severity = event.severity ?? 0.5;
+      if (planet) {
+        planet.label = planet.label.includes('Living') ? planet.label : `Living ${planet.label}`;
+        planet.biosphere = Math.min(1, (planet.biosphere ?? 0) + 0.12 + severity * 0.16);
+        planet.atmosphere = Math.min(1, (planet.atmosphere ?? 0) + 0.04);
+        addSurfaceMark(planet, event.position.clone().add(new THREE.Vector3(planet.radius * 0.6, planet.radius * 0.2, planet.radius * 0.1)), 0x6dff9b, 0.18 + severity * 0.22, 'biosphere-mark');
+      }
+      seedFineDust(event.position, Math.floor(28 + severity * 35), 0x6dff9b, 58 + severity * 62, 0.022, false, 'Biosphere Spark');
+      particles.burst(event.position, 0x6dff9b, Math.floor(38 + severity * 42), 66 + severity * 54, 'gas');
+      nebula.burst(event.position, { count: Math.floor(42 + severity * 54), colorA: '#6dff9b', colorB: '#72fff0', speed: 58 + severity * 46, life: 1.8, radius: [5, 18], drift: 24 });
+      ui.status.textContent = `${event.planetType ?? 'planet'} entered a habitable rhythm`;
       continue;
     }
     if (event.type === 'impact') {

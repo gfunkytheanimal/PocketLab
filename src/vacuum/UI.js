@@ -356,6 +356,9 @@ export class UI {
     if (body.atmosphere) bits.push(`atmosphere ${(body.atmosphere * 100).toFixed(0)}%`);
     if (body.water) bits.push(`${body.water > 0.45 ? 'ocean' : 'ice'} ${(body.water * 100).toFixed(0)}%`);
     if (body.craters) bits.push(`${body.craters} crater${body.craters === 1 ? '' : 's'}`);
+    if (body.surfaceMissions) bits.push(`${body.surfaceMissions} surface contact${body.surfaceMissions === 1 ? '' : 's'}`);
+    if (body.habitability) bits.push(`habitable ${(body.habitability * 100).toFixed(0)}%`);
+    if (body.biosphere) bits.push(`biosphere ${(body.biosphere * 100).toFixed(0)}%`);
     if (body.satelliteCount) bits.push(`${body.satelliteCount} capture${body.satelliteCount === 1 ? '' : 's'}`);
     if (body.accretion && body.accretion > 0.5) bits.push(`accretion ${body.accretion.toFixed(1)}`);
     if (body.phaseShift && body.phaseShift > 0.05) bits.push(`phase ${(body.phaseShift * 100).toFixed(0)}%`);
