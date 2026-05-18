@@ -128,6 +128,8 @@ export class UI {
     document.getElementById('clear-dust-btn').addEventListener('click', () => this.callbacks.clearDust());
     document.getElementById('clear-fossils-btn').addEventListener('click', () => this.callbacks.clearFossils());
     document.getElementById('clear-trails-btn').addEventListener('click', () => this.callbacks.clearTrails());
+    document.getElementById('save-universe-btn').addEventListener('click', () => this.callbacks.saveUniverse());
+    document.getElementById('load-universe-btn').addEventListener('click', () => this.callbacks.loadUniverse());
     document.getElementById('reset-btn').addEventListener('click', () => this.callbacks.reset());
     document.querySelectorAll('.camera-btn').forEach((button) => {
       button.addEventListener('click', () => this.callbacks.setCameraView(button.dataset.view));

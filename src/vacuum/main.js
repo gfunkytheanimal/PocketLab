@@ -17,6 +17,8 @@ import { PaintLayer } from './PaintLayer.js';
 import { createSoftParticleTexture } from './SoftParticleTexture.js';
 import { ASSETS } from './config.js';
 
+const SAVE_KEY = 'pocket-universe-lab.snapshot.v1';
+
 const canvas = document.getElementById('scene');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x010207);
@@ -130,6 +132,8 @@ const ui = new UI(state, {
   clearDust,
   clearFossils,
   clearTrails,
+  saveUniverse,
+  loadUniverse,
   setToolMode,
   setBrushMode,
   applyToolAt,
@@ -155,6 +159,8 @@ new Interaction(renderer, camera, state, {
   clearDust,
   clearFossils,
   clearTrails,
+  saveUniverse,
+  loadUniverse,
   setToolMode,
   setBrushMode,
   applyToolAt,
@@ -927,6 +933,7 @@ function spawn(type, position) {
   if (type === 'dust') {
     seedFineDust(position, 34, 0x9fefff, 42, 0.04, false);
   }
+  return body;
 }
 
 function randomSpawnPosition() {
@@ -2051,6 +2058,117 @@ function clearDust() {
 function clearTrails() {
   for (const body of state.bodies) body.trail.length = 0;
   ui.status.textContent = 'all trails cleared';
+}
+
+function saveUniverse() {
+  try {
+    const snapshot = {
+      version: 1,
+      savedAt: Date.now(),
+      camera: {
+        position: camera.position.toArray(),
+        target: controls.target.toArray()
+      },
+      state: {
+        timeScale: state.timeScale,
+        gravityScale: state.gravityScale,
+        softeningScale: state.softeningScale,
+        captureScale: state.captureScale,
+        damping: state.damping,
+        restitution: state.restitution,
+        boundaryRestitution: state.boundaryRestitution,
+        boundsSize: state.boundsSize,
+        depthSpread: state.depthSpread
+      },
+      bodies: state.bodies
+        .filter((body) => !body.toRemove && !body.isDust)
+        .slice(0, 180)
+        .map(serializeBody)
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot));
+    ui.status.textContent = `saved ${snapshot.bodies.length} live objects`;
+  } catch (error) {
+    console.warn('Save failed', error);
+    ui.status.textContent = 'save failed in this browser';
+  }
+}
+
+function loadUniverse() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) {
+      ui.status.textContent = 'no saved universe yet';
+      return;
+    }
+    const snapshot = JSON.parse(raw);
+    reset({ status: 'loading saved universe' });
+    Object.assign(state, snapshot.state ?? {});
+    for (const saved of snapshot.bodies ?? []) {
+      if (!ASSETS.some((asset) => asset.type === saved.type)) continue;
+      const body = spawn(saved.type, new THREE.Vector3(...saved.position));
+      hydrateBody(body, saved);
+    }
+    if (snapshot.camera?.position) camera.position.fromArray(snapshot.camera.position);
+    if (snapshot.camera?.target) controls.target.fromArray(snapshot.camera.target);
+    controls.update();
+    ui.syncToolbar();
+    ui.status.textContent = `loaded ${state.bodies.length} saved objects`;
+  } catch (error) {
+    console.warn('Load failed', error);
+    ui.status.textContent = 'saved universe could not be loaded';
+  }
+}
+
+function serializeBody(body) {
+  return {
+    type: body.type,
+    label: body.label,
+    mass: body.mass,
+    radius: body.radius,
+    baseRadius: body.baseRadius,
+    charge: body.charge,
+    position: body.position.toArray(),
+    velocity: body.velocity.toArray(),
+    angularVelocity: body.angularVelocity,
+    frozen: body.frozen,
+    showTrail: body.showTrail,
+    heat: body.heat,
+    glow: body.glow,
+    fieldStress: body.fieldStress,
+    shockwave: body.shockwave,
+    w: body.w,
+    wVelocity: body.wVelocity,
+    timeDilation: body.timeDilation,
+    phaseShift: body.phaseShift,
+    atmosphere: body.atmosphere,
+    water: body.water,
+    craters: body.craters,
+    surfaceMissions: body.surfaceMissions,
+    habitability: body.habitability,
+    biosphere: body.biosphere,
+    tailLength: body.tailLength,
+    tailWidth: body.tailWidth,
+    tailOpacity: body.tailOpacity,
+    accretion: body.accretion
+  };
+}
+
+function hydrateBody(body, saved) {
+  body.label = saved.label ?? body.label;
+  body.mass = saved.mass ?? body.mass;
+  body.radius = saved.radius ?? body.radius;
+  body.baseRadius = saved.baseRadius ?? body.baseRadius;
+  body.charge = saved.charge ?? body.charge;
+  body.velocity.fromArray(saved.velocity ?? [0, 0, 0]);
+  body.angularVelocity = saved.angularVelocity ?? body.angularVelocity;
+  body.frozen = Boolean(saved.frozen);
+  body.showTrail = saved.showTrail ?? body.showTrail;
+  for (const prop of ['heat', 'glow', 'fieldStress', 'shockwave', 'w', 'wVelocity', 'timeDilation', 'phaseShift', 'atmosphere', 'water', 'craters', 'surfaceMissions', 'habitability', 'biosphere', 'tailLength', 'tailWidth', 'tailOpacity', 'accretion']) {
+    if (saved[prop] !== undefined) body[prop] = saved[prop];
+  }
+  body.group.scale.setScalar(body.radius / body.baseRadius);
+  body.group.position.copy(body.position);
+  if (body.atmosphere) addAtmosphereShell(body, body.type === 'mars' ? 0xffb07a : 0x7edfff);
 }
 
 function fossilizeUniverse() {
