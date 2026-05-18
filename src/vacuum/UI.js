@@ -304,6 +304,7 @@ export class UI {
         <button data-action="ignite">Ignite</button>
         <button data-action="binary">Binary</button>
         <button data-action="survey">Survey</button>
+        <button data-action="visit">Visit</button>
         <button data-action="flare">Flare</button>
         <button data-action="release">Release</button>
         <button data-action="z-down">Z -</button>

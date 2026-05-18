@@ -1643,6 +1643,7 @@ function inspectAction(action) {
   if (action === 'ignite') igniteSelected(body);
   if (action === 'binary') makeBinary(body);
   if (action === 'survey') surveySelected(body);
+  if (action === 'visit') visitSelected(body);
   if (action === 'release') releaseBody(body);
   if (action === 'flare') {
     body.heat = 1;
@@ -1669,6 +1670,30 @@ function inspectAction(action) {
     state.selected = null;
   }
   ui.updateInspector();
+}
+
+function visitSelected(body) {
+  if (body.category !== 'planetary') {
+    controls.target.copy(body.position);
+    camera.position.copy(body.position).add(new THREE.Vector3(body.radius * 5, -body.radius * 8, body.radius * 5));
+    controls.update();
+    ui.status.textContent = `camera approached ${body.label}`;
+    return;
+  }
+  const normal = new THREE.Vector3(0.38, -0.62, 0.69).normalize();
+  const tangent = new THREE.Vector3(-normal.y, normal.x, 0.18).normalize();
+  controls.target.copy(body.position).addScaledVector(normal, body.radius * 0.88);
+  camera.position.copy(body.position)
+    .addScaledVector(normal, body.radius * 3.4)
+    .addScaledVector(tangent, body.radius * 1.2);
+  controls.minDistance = Math.max(6, body.radius * 0.8);
+  controls.update();
+  state.cameraMode = 'surface-approach';
+  body.surveyed = Math.max(1, body.surveyed ?? 0);
+  body.worldSurvey ??= 'surface approach started';
+  seedFineDust(controls.target.clone(), 18, 0xfff0a8, 30, 0.014, false, 'Survey Glint');
+  particles.burst(controls.target, 0xfff0a8, 22, 44, 'spark');
+  ui.status.textContent = `surface approach: ${body.label}`;
 }
 
 function surveySelected(body) {
@@ -2524,6 +2549,7 @@ function setDevSetting(prop, value) {
 
 function setCameraView(view) {
   state.cameraMode = view;
+  controls.minDistance = 32;
   if (view === 'top') {
     camera.position.set(0, 0, 760);
   }
@@ -2582,6 +2608,7 @@ function reset(options = {}) {
   paintLayer.clear();
   paintCursor.visible = false;
   controls.target.set(0, 0, 0);
+  controls.minDistance = 32;
   controls.update();
   ui.status.textContent = options.status ?? 'vacuum reset';
   ui.updateInspector();
