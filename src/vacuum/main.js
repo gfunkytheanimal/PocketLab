@@ -71,6 +71,8 @@ const state = {
   devMode: false,
   toolMode: 'select',
   brushMode: 'stars',
+  powerRadius: 185,
+  powerStrength: 1,
   brushSize: 1,
   brushStrength: 1,
   cameraShake: 0,
@@ -230,6 +232,68 @@ function consumePhysicsEvents() {
       particles.burst(event.position, 0xcffcff, 54, 120, 'comet');
       nebula.burst(event.position, { count: 52, colorA: '#cffcff', colorB: '#ffb35d', speed: 105, life: 1.2, radius: [4, 14], drift: 34 });
       ui.status.textContent = 'star boiled a comet tail';
+      continue;
+    }
+    if (event.type === 'vaporize-ice') {
+      const body = state.bodies.find((item) => item.id === event.bodyId);
+      if (body) {
+        body.tailLength = Math.min(4, (body.tailLength ?? 1) + 0.9);
+        body.tailWidth = Math.min(3, (body.tailWidth ?? 1) + 0.35);
+        body.heat = 1;
+      }
+      seedFineDust(event.position, 42, 0xcffcff, 135, 0.025, false, 'Icy Steam');
+      particles.burst(event.position, 0xcffcff, 86, 150, 'comet');
+      nebula.burst(event.position, { count: 95, colorA: '#cffcff', colorB: '#ffb35d', speed: 130, life: 1.75, radius: [6, 22], drift: 52 });
+      ui.status.textContent = 'star flash-boiled comet ice';
+      continue;
+    }
+    if (event.type === 'magma-splash') {
+      const body = state.bodies.find((item) => item.id === event.bodyId);
+      if (body) {
+        body.label = `Molten ${body.label}`;
+        body.heat = 1;
+        body.glow = Math.max(body.glow ?? 1, 2.2);
+      }
+      seedFineDust(event.position, 48, 0xff7a24, 120, 0.07, true, 'Molten Spray');
+      particles.burst(event.position, 0xff7a24, 92, 150, 'radiation');
+      nebula.burst(event.position, { count: 82, colorA: '#ff7a24', colorB: '#ffd36b', speed: 122, life: 1.35, radius: [5, 16], drift: 32 });
+      ui.status.textContent = `${event.sourceType ?? 'planet'} crust liquefied`;
+      continue;
+    }
+    if (event.type === 'gas-giant-shear') {
+      const body = state.bodies.find((item) => item.id === event.bodyId);
+      if (body) {
+        body.heat = 1;
+        body.angularVelocity += 0.9;
+        body.fieldStress = 1.2;
+      }
+      seedFineDust(event.position, 70, 0xffb35d, 105, 0.035, true, 'Boiled Atmosphere');
+      particles.burst(event.position, 0xffb35d, 96, 142, 'gas');
+      nebula.burst(event.position, { count: 135, colorA: '#ffb35d', colorB: '#9b7cff', speed: 128, life: 2.0, radius: [8, 26], drift: 58 });
+      ui.status.textContent = 'gas giant atmosphere sheared';
+      continue;
+    }
+    if (event.type === 'charged-metal') {
+      const body = state.bodies.find((item) => item.id === event.bodyId);
+      if (body) {
+        body.label = `Charged ${body.label}`;
+        body.glow = Math.max(body.glow ?? 1, 1.7);
+      }
+      particles.burst(event.position, 0xff4ed6, 62, 105, 'spark');
+      nebula.burst(event.position, { count: 70, colorA: '#ff4ed6', colorB: '#72fff0', speed: 95, life: 1.3, radius: [4, 15], drift: 42 });
+      ui.status.textContent = 'metal hull charged by field contact';
+      continue;
+    }
+    if (event.type === 'beam-scar') {
+      const target = state.bodies.find((item) => item.id === event.targetId);
+      if (target) {
+        target.label = `Scarred ${target.label}`;
+        target.glow = Math.max(target.glow ?? 1, 1.35);
+      }
+      seedFineDust(event.position, 16, 0xff3c72, 120, 0.025, true, 'Beam Ash');
+      particles.burst(event.position, 0xff3c72, 58, 150, 'laser');
+      nebula.burst(event.position, { count: 50, colorA: '#ff3c72', colorB: '#fff0ff', speed: 125, life: 0.9, radius: [3, 11], drift: 18 });
+      ui.status.textContent = `${event.targetType ?? 'object'} beam-scarred`;
       continue;
     }
     if (event.type === 'spacetime-shear') {
@@ -1127,6 +1191,9 @@ function inspectAction(action) {
   if (action === 'dust-ring') seedDustRing(body);
   if (action === 'tractor') tractorSelected(body);
   if (action === 'goo-burst') emitBioPlasma(body);
+  if (action === 'explode') burstSelected(body);
+  if (action === 'ignite') igniteSelected(body);
+  if (action === 'binary') makeBinary(body);
   if (action === 'release') releaseBody(body);
   if (action === 'flare') {
     body.heat = 1;
@@ -1153,6 +1220,64 @@ function inspectAction(action) {
     state.selected = null;
   }
   ui.updateInspector();
+}
+
+function burstSelected(body) {
+  const severity = body.category === 'stellar' || body.category === 'singularity' ? 0.65 : 0.95;
+  body.shockwave = 1.2;
+  body.heat = Math.max(body.heat ?? 0, 0.7);
+  if (!['stellar', 'singularity', 'field'].includes(body.category)) {
+    seedFragments(body.position, body.velocity, severity, body.category, undefined, `${body.label} Piece`);
+    seedFineDust(body.position, 34, body.materialProfile === 'ice' ? 0xcffcff : body.materialProfile === 'organic' ? 0xff3a24 : 0xffb35d, 115, 0.04, true, `${body.label} Dust`);
+    body.toRemove = body.mass < 18 || body.category === 'crew' || body.category === 'small-body';
+  } else {
+    seedFineDust(body.position, 78, body.type === 'blackhole' ? 0xff9d42 : 0xffd36b, 165, 0.055, true, `${body.label} Flare Dust`);
+  }
+  particles.burst(body.position, body.type === 'blackhole' ? 0xff9d42 : 0xff6a32, 120, 190, 'radiation');
+  nebula.burst(body.position, { count: 128, colorA: '#ff6a32', colorB: '#ffffff', speed: 180, life: 1.35, radius: [6, 24], drift: 52 });
+  state.cameraShake = Math.max(state.cameraShake, 4.2);
+  ui.status.textContent = `${body.label} burst`;
+}
+
+function igniteSelected(body) {
+  body.heat = 1;
+  body.glow = Math.max(body.glow ?? 1, 2.4);
+  body.shockwave = 1;
+  body.fieldStress = Math.max(body.fieldStress ?? 0, 0.9);
+  if (body.category === 'gas' || body.type === 'gas') {
+    body.label = 'Ignited Gas Cloud';
+    body.mass = Math.max(body.mass, 10);
+    body.angularVelocity += 1.2;
+  }
+  particles.burst(body.position, 0xffd36b, 96, 145, 'radiation');
+  nebula.burst(body.position, { count: 118, colorA: '#ff9d42', colorB: '#fff6a8', speed: 130, life: 1.8, radius: [7, 24], drift: 44 });
+  ui.status.textContent = `${body.label} ignited`;
+}
+
+function makeBinary(body) {
+  const partner = nearestBody(body.position, (candidate) => candidate !== body && candidate.mass > 0.5 && !candidate.toRemove);
+  if (!partner) {
+    ui.status.textContent = 'spawn another body for binary motion';
+    return;
+  }
+  const center = body.position.clone().lerp(partner.position, 0.5);
+  const radial = body.position.clone().sub(partner.position);
+  if (radial.lengthSq() < 1) radial.set(1, 0, 0);
+  const distance = Math.max(radial.length(), body.radius + partner.radius + 80);
+  radial.normalize();
+  const tangent = new THREE.Vector3(-radial.y, radial.x, radial.z * 0.18).normalize();
+  const totalMass = Math.max(1, body.mass + partner.mass);
+  const speed = Math.sqrt((state.gravityScale * totalMass) / distance) * 13;
+  body.position.copy(center).addScaledVector(radial, distance * partner.mass / totalMass);
+  partner.position.copy(center).addScaledVector(radial, -distance * body.mass / totalMass);
+  body.velocity.copy(tangent).multiplyScalar(speed * partner.mass / totalMass);
+  partner.velocity.copy(tangent).multiplyScalar(-speed * body.mass / totalMass);
+  body.trail.length = 0;
+  partner.trail.length = 0;
+  body.shockwave = Math.max(body.shockwave ?? 0, 0.55);
+  partner.shockwave = Math.max(partner.shockwave ?? 0, 0.55);
+  nebula.burst(center, { count: 70, colorA: '#72fff0', colorB: '#ffffff', speed: 80, life: 1.1, radius: [4, 18], drift: 28 });
+  ui.status.textContent = `${body.label} and ${partner.label} set into binary dance`;
 }
 
 function tractorSelected(body) {
@@ -1479,10 +1604,11 @@ function setBrushMode(brush) {
 
 function pointerMoved(world, mode) {
   ui.updateCoordinates(world, mode);
-  paintCursor.visible = state.toolMode === 'paint';
+  paintCursor.visible = state.toolMode !== 'select';
   if (!paintCursor.visible || !world) return;
   paintCursor.position.copy(world);
-  paintCursor.scale.setScalar(Math.max(0.4, state.brushSize ?? 1));
+  const radius = state.toolMode === 'paint' ? 34 * Math.max(0.4, state.brushSize ?? 1) : Math.max(16, state.powerRadius ?? 185);
+  paintCursor.scale.setScalar(radius / 34);
   paintCursor.quaternion.copy(camera.quaternion);
 }
 
@@ -1491,7 +1617,9 @@ function applyToolAt(origin, tool) {
     paintBrush(origin);
     return;
   }
-  const radius = tool === 'orbit' ? 260 : ['fold', 'unfold'].includes(tool) ? 230 : 185;
+  const baseRadius = tool === 'orbit' ? 260 : ['fold', 'unfold'].includes(tool) ? 230 : 185;
+  const radius = Math.max(20, state.powerRadius ?? baseRadius);
+  const strengthScale = state.powerStrength ?? 1;
   let affected = 0;
   for (const body of state.bodies) {
     if (body.category === 'singularity' && tool !== 'heat') continue;
@@ -1502,32 +1630,32 @@ function applyToolAt(origin, tool) {
     const dir = distance > 0.001 ? delta.normalize() : randomDirection();
     const massFactor = 1 / Math.max(0.65, Math.sqrt(Math.max(0.2, body.mass)));
     if (tool === 'push') {
-      body.velocity.addScaledVector(dir, 155 * falloff * massFactor);
+      body.velocity.addScaledVector(dir, 155 * falloff * massFactor * strengthScale);
     }
     if (tool === 'pull') {
-      body.velocity.addScaledVector(dir, -135 * falloff * massFactor);
+      body.velocity.addScaledVector(dir, -135 * falloff * massFactor * strengthScale);
       body.fieldStress = Math.max(body.fieldStress ?? 0, falloff);
     }
     if (tool === 'heat') {
-      body.heat = Math.min(1, (body.heat ?? 0) + falloff * 0.85);
-      body.shockwave = Math.max(body.shockwave ?? 0, falloff * 0.8);
+      body.heat = Math.min(1, (body.heat ?? 0) + falloff * 0.85 * strengthScale);
+      body.shockwave = Math.max(body.shockwave ?? 0, falloff * 0.8 * strengthScale);
     }
     if (tool === 'freeze') {
-      body.velocity.multiplyScalar(1 - falloff * 0.92);
-      body.angularVelocity *= 1 - falloff * 0.9;
+      body.velocity.multiplyScalar(Math.max(0, 1 - falloff * 0.92 * strengthScale));
+      body.angularVelocity *= Math.max(0, 1 - falloff * 0.9 * strengthScale);
       body.frozen = falloff > 0.78 ? !body.frozen : body.frozen;
     }
     if (tool === 'orbit') {
       const tangent = new THREE.Vector3(-dir.y, dir.x, dir.z * 0.25).normalize();
-      body.velocity.addScaledVector(tangent, 95 * falloff * massFactor);
+      body.velocity.addScaledVector(tangent, 95 * falloff * massFactor * strengthScale);
     }
     if (tool === 'fold') {
-      body.wVelocity += 72 * falloff * massFactor;
+      body.wVelocity += 72 * falloff * massFactor * strengthScale;
       body.fieldStress = Math.max(body.fieldStress ?? 0, falloff * 1.1);
       body.shockwave = Math.max(body.shockwave ?? 0, falloff * 0.45);
     }
     if (tool === 'unfold') {
-      body.wVelocity -= 72 * falloff * massFactor;
+      body.wVelocity -= 72 * falloff * massFactor * strengthScale;
       body.fieldStress = Math.max(body.fieldStress ?? 0, falloff * 1.1);
       body.shockwave = Math.max(body.shockwave ?? 0, falloff * 0.45);
     }
@@ -1535,9 +1663,9 @@ function applyToolAt(origin, tool) {
     affected++;
   }
   const color = tool === 'heat' ? 0xff9d42 : tool === 'freeze' ? 0x9fefff : tool === 'pull' ? 0xc35cff : ['fold', 'unfold'].includes(tool) ? 0x72eaff : 0x72fff0;
-  particles.burst(origin, color, 44, tool === 'orbit' ? 130 : 105, tool === 'heat' ? 'radiation' : 'spark');
-  nebula.burst(origin, { count: 62, colorA: `#${color.toString(16).padStart(6, '0')}`, colorB: '#ffffff', speed: 115, life: 0.9, radius: [3, 14], drift: 36 });
-  state.cameraShake = Math.max(state.cameraShake, tool === 'heat' ? 1.8 : 1.0);
+  particles.burst(origin, color, Math.round(44 * Math.min(2, strengthScale)), (tool === 'orbit' ? 130 : 105) * strengthScale, tool === 'heat' ? 'radiation' : 'spark');
+  nebula.burst(origin, { count: Math.round(62 * Math.min(2, strengthScale)), colorA: `#${color.toString(16).padStart(6, '0')}`, colorB: '#ffffff', speed: 115 * strengthScale, life: 0.9, radius: [3, 14], drift: 36 });
+  state.cameraShake = Math.max(state.cameraShake, (tool === 'heat' ? 1.8 : 1.0) * Math.min(2, strengthScale));
   ui.status.textContent = `${tool} affected ${affected} objects`;
 }
 

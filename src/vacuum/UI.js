@@ -48,6 +48,8 @@ const PHYSICS_INPUTS = [
   'depth-spread',
   'field-density',
   'trail-length',
+  'power-radius',
+  'power-strength',
   'brush-size',
   'brush-strength'
 ];
@@ -290,6 +292,9 @@ export class UI {
         <button data-action="dust-ring">Dust Belt</button>
         <button data-action="tractor">Tractor</button>
         <button data-action="goo-burst">Goo Burst</button>
+        <button data-action="explode">Burst</button>
+        <button data-action="ignite">Ignite</button>
+        <button data-action="binary">Binary</button>
         <button data-action="flare">Flare</button>
         <button data-action="release">Release</button>
         <button data-action="z-down">Z -</button>

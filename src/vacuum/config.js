@@ -61,3 +61,33 @@ export const PRESETS = {
   laser: { velocity: [0, 0, 0], angular: 0 },
   mystery: { velocity: [0, 0, 0], angular: 0 }
 };
+
+export const MATERIAL_PROFILES = {
+  astronaut: 'organic',
+  alien: 'organic',
+  planet: 'rock',
+  mars: 'rock',
+  jupiter: 'gas-giant',
+  moon: 'rock',
+  star: 'plasma',
+  blackhole: 'singularity',
+  comet: 'ice',
+  gas: 'gas',
+  station: 'metal',
+  mir: 'metal',
+  hubble: 'metal',
+  jwst: 'metal',
+  mro: 'metal',
+  voyager: 'metal',
+  rover: 'metal',
+  dish: 'metal',
+  probe: 'metal',
+  ufo: 'field-metal',
+  magnet: 'field',
+  portal: 'field',
+  asteroid: 'rock',
+  dust: 'dust',
+  debris: 'metal',
+  laser: 'energy',
+  mystery: 'metal'
+};

@@ -30,6 +30,7 @@ export class PhysicsEngine {
       body.attachCooldown = Math.max(0, (body.attachCooldown ?? 0) - dt);
       body.abductCooldown = Math.max(0, (body.abductCooldown ?? 0) - dt);
       body.spacetimeCooldown = Math.max(0, (body.spacetimeCooldown ?? 0) - dt);
+      body.materialCooldown = Math.max(0, (body.materialCooldown ?? 0) - dt);
     }
 
     for (let i = 0; i < bodies.length; i++) {
@@ -301,6 +302,7 @@ export class PhysicsEngine {
         const normal = this.normal.copy(delta).multiplyScalar(1 / dist);
         if (this.applyPortalLaserReaction(a, b, normal)) continue;
         if (this.applyWormholeStarReaction(a, b, normal)) continue;
+        if (this.applyMaterialReaction(a, b, normal)) continue;
         if (this.applyBlackHoleMerge(a, b, normal)) continue;
         if (a.type === 'blackhole' || b.type === 'blackhole') {
           const eater = a.type === 'blackhole' ? a : b;
@@ -376,6 +378,106 @@ export class PhysicsEngine {
       position: portal.position.clone()
     });
     return true;
+  }
+
+  applyMaterialReaction(a, b, normal) {
+    const profiles = [a.materialProfile, b.materialProfile];
+    const hasMetal = profiles.some((profile) => ['metal', 'field-metal'].includes(profile));
+    const hasField = profiles.some((profile) => ['field', 'field-metal'].includes(profile));
+    const star = a.type === 'star' ? a : b.type === 'star' ? b : null;
+    const comet = a.type === 'comet' ? a : b.type === 'comet' ? b : null;
+    if (star && comet && this.readyForReaction(star, comet)) {
+      const outward = comet.position.clone().sub(star.position);
+      if (outward.lengthSq() < 0.001) outward.copy(normal);
+      outward.normalize();
+      comet.heat = 1;
+      comet.fieldStress = 1;
+      comet.velocity.addScaledVector(outward, 38);
+      star.shockwave = Math.max(star.shockwave ?? 0, 0.65);
+      this.cooldown(star, comet, 0.7);
+      this.state.events?.push({
+        type: 'vaporize-ice',
+        position: comet.position.clone().lerp(star.position, 0.35),
+        bodyId: comet.id
+      });
+      return false;
+    }
+
+    if (star && (profiles.includes('rock') || profiles.includes('gas-giant')) && this.readyForReaction(a, b)) {
+      const other = star === a ? b : a;
+      other.heat = 1;
+      other.shockwave = 1;
+      other.fieldStress = Math.max(other.fieldStress ?? 0, 0.85);
+      star.shockwave = Math.max(star.shockwave ?? 0, 0.8);
+      this.cooldown(star, other, 1.2);
+      this.state.events?.push({
+        type: other.materialProfile === 'gas-giant' ? 'gas-giant-shear' : 'magma-splash',
+        position: other.position.clone().lerp(star.position, 0.5),
+        bodyId: other.id,
+        sourceType: other.type
+      });
+      return false;
+    }
+
+    if (hasMetal && hasField && this.readyForReaction(a, b)) {
+      const metal = ['metal', 'field-metal'].includes(a.materialProfile) ? a : b;
+      const field = metal === a ? b : a;
+      metal.charge = Math.max(Math.abs(metal.charge ?? 0), 0.8);
+      metal.fieldStress = Math.max(metal.fieldStress ?? 0, 1);
+      field.fieldStress = Math.max(field.fieldStress ?? 0, 1);
+      metal.velocity.addScaledVector(normal.clone().multiplyScalar(metal === b ? 1 : -1), 32 / Math.max(0.5, metal.mass));
+      this.cooldown(metal, field, 0.9);
+      this.state.events?.push({
+        type: 'charged-metal',
+        position: metal.position.clone().lerp(field.position, 0.5),
+        bodyId: metal.id
+      });
+      return false;
+    }
+
+    if (profiles.includes('organic') && profiles.includes('plasma') && this.readyForReaction(a, b)) {
+      const body = a.materialProfile === 'organic' ? a : b;
+      body.heat = 1;
+      body.shockwave = 1;
+      body.toRemove = true;
+      this.cooldown(a, b, 1.2);
+      this.state.events?.push({
+        type: 'bio-plasma',
+        position: body.position.clone(),
+        velocity: body.velocity.clone(),
+        sourceType: body.type,
+        sourceLabel: body.label,
+        severity: 1
+      });
+      return true;
+    }
+
+    if (profiles.includes('energy') && profiles.some((profile) => ['metal', 'rock', 'ice'].includes(profile)) && this.readyForReaction(a, b)) {
+      const energy = a.materialProfile === 'energy' ? a : b;
+      const target = energy === a ? b : a;
+      target.heat = Math.min(1, (target.heat ?? 0) + 0.55);
+      target.shockwave = Math.max(target.shockwave ?? 0, 0.6);
+      energy.velocity.reflect(normal).multiplyScalar(0.72);
+      this.cooldown(energy, target, 0.45);
+      this.state.events?.push({
+        type: 'beam-scar',
+        position: energy.position.clone().lerp(target.position, 0.5),
+        targetId: target.id,
+        targetType: target.type
+      });
+      return false;
+    }
+
+    return false;
+  }
+
+  readyForReaction(a, b) {
+    return (a.materialCooldown ?? 0) <= 0 && (b.materialCooldown ?? 0) <= 0;
+  }
+
+  cooldown(a, b, time) {
+    a.materialCooldown = time;
+    b.materialCooldown = time;
   }
 
   applyBlackHoleMerge(a, b, normal) {

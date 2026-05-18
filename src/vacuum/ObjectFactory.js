@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { ASSETS, MAX_TRAIL_POINTS, PRESETS } from './config.js';
+import { ASSETS, MATERIAL_PROFILES, MAX_TRAIL_POINTS, PRESETS } from './config.js';
 import { createBlackHoleMaterial } from './BlackHoleMaterial.js';
 import {
   createGasCloudMaterial,
@@ -82,6 +82,7 @@ export class ObjectFactory {
       type,
       category: asset.category,
       label: asset.label,
+      materialProfile: MATERIAL_PROFILES[type] ?? asset.category,
       mass: asset.mass,
       radius: asset.radius,
       charge: asset.charge ?? (type === 'debris' ? 0.25 : 0),
