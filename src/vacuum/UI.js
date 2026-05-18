@@ -85,7 +85,7 @@ export class UI {
     for (const [group, assets] of groups) {
       const details = document.createElement('details');
       details.className = 'asset-section';
-      details.open = ['Core Bodies', 'Living Systems', 'Spacecraft'].includes(group);
+      details.open = ['Core Bodies', 'Living Systems'].includes(group);
       details.innerHTML = `<summary>${group}</summary>`;
       const sectionList = document.createElement('div');
       sectionList.className = 'asset-section-list';
@@ -328,30 +328,33 @@ export class UI {
           ` : ''}
         </div>
       </details>
-      <div class="inspector-actions">
-        <button data-action="mass-up">Mass +</button>
-        <button data-action="mass-down">Mass -</button>
-        <button data-action="velocity-down">Slow</button>
-        <button data-action="velocity-up">Boost</button>
-        <button data-action="orbit-kick">Orbit</button>
-        <button data-action="dust-ring">Dust Belt</button>
-        <button data-action="tractor">Tractor</button>
-        <button data-action="goo-burst">Goo</button>
-        <button data-action="explode">Burst</button>
-        <button data-action="ignite">Ignite</button>
-        <button data-action="binary">Binary</button>
-        <button data-action="survey">Survey</button>
-        <button data-action="visit">Visit</button>
-        <button data-action="flare">Flare</button>
-        <button data-action="release">Release</button>
-        <button data-action="z-down">Z -</button>
-        <button data-action="z-up">Z +</button>
-        <button data-action="spin">Spin</button>
-        <button data-action="stop">Stop</button>
-        <button data-action="freeze">${body.frozen ? 'Unfreeze' : 'Freeze'}</button>
-        <button data-action="trail">${body.showTrail ? 'Hide Trail' : 'Show Trail'}</button>
-        <button data-action="delete">Delete</button>
-      </div>
+      <details class="object-control-group">
+        <summary>Actions</summary>
+        <div class="inspector-actions">
+          <button data-action="mass-up">Mass +</button>
+          <button data-action="mass-down">Mass -</button>
+          <button data-action="velocity-down">Slow</button>
+          <button data-action="velocity-up">Boost</button>
+          <button data-action="orbit-kick">Orbit</button>
+          <button data-action="dust-ring">Dust Belt</button>
+          <button data-action="tractor">Tractor</button>
+          <button data-action="goo-burst">Goo</button>
+          <button data-action="explode">Burst</button>
+          <button data-action="ignite">Ignite</button>
+          <button data-action="binary">Binary</button>
+          <button data-action="survey">Survey</button>
+          <button data-action="visit">Visit</button>
+          <button data-action="flare">Flare</button>
+          <button data-action="release">Release</button>
+          <button data-action="z-down">Z -</button>
+          <button data-action="z-up">Z +</button>
+          <button data-action="spin">Spin</button>
+          <button data-action="stop">Stop</button>
+          <button data-action="freeze">${body.frozen ? 'Unfreeze' : 'Freeze'}</button>
+          <button data-action="trail">${body.showTrail ? 'Hide Trail' : 'Show Trail'}</button>
+          <button data-action="delete">Delete</button>
+        </div>
+      </details>
     `;
     this.selectedControls.querySelectorAll('input[data-prop]').forEach((input) => {
       input.title = INSPECTOR_HELP[input.dataset.prop] ?? 'Adjust this property in real time.';

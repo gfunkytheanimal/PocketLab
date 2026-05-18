@@ -991,7 +991,7 @@ function spawnSystemKit(type, origin) {
     world.water = 0.12;
     world.worldSurvey = 'young seeded system';
     addAtmosphereShell(world, 0x72dfff);
-    seedFineDust(origin, 8, 0xffd36b, 82, 0.005, false, 'System Microdust');
+    particles.burst(origin, 0xffd36b, 12, 42, 'spark');
   }
 
   if (type === 'kit-moon') {
@@ -1003,7 +1003,7 @@ function spawnSystemKit(type, origin) {
     planet.satelliteCount = 2;
     planet.worldSurvey = 'stable moon architecture';
     addSurfaceMark(planet, planet.position.clone().add(new THREE.Vector3(planet.radius, 0, 0)), 0xb8d8ff, 0.18, 'landing-mark');
-    seedFineDust(origin, 5, 0x72dfff, 64, 0.005, false, 'Orbital Glint');
+    particles.burst(origin, 0x72dfff, 8, 34, 'spark');
   }
 
   if (type === 'kit-binary') {
@@ -1014,7 +1014,7 @@ function spawnSystemKit(type, origin) {
     b.mass = 82;
     orbit(a, planet, 1, 0.72);
     planet.worldSurvey = 'circumbinary candidate';
-    seedFineDust(origin, 9, 0xffb35d, 96, 0.006, true, 'Binary Glint');
+    particles.burst(origin, 0xffb35d, 12, 48, 'radiation');
   }
 
   if (type === 'kit-comets') {
@@ -1972,16 +1972,16 @@ function seedDustRing(body) {
     seedSolarWind(body);
     return;
   }
-  const ringCount = body.type === 'blackhole' ? 72 : 44;
-  const radius = body.radius * (body.type === 'blackhole' ? 4.6 : 2.9);
+  const ringCount = body.type === 'blackhole' ? 72 : 22;
+  const radius = body.radius * (body.type === 'blackhole' ? 4.6 : 3.35);
   for (let i = 0; i < ringCount; i++) {
     const angle = (i / ringCount) * Math.PI * 2;
     const jitter = (Math.random() - 0.5) * body.radius * 0.8;
     const pos = body.position.clone().add(new THREE.Vector3(Math.cos(angle), Math.sin(angle), (Math.random() - 0.5) * body.radius * 0.35).multiplyScalar(radius + jitter));
     const dust = factory.create('dust', pos);
     dust.label = 'Ring Dust';
-    dust.mass = 0.025 + Math.random() * 0.07;
-    dust.radius = 0.75 + Math.random() * 0.85;
+    dust.mass = body.type === 'blackhole' ? 0.025 + Math.random() * 0.07 : 0.012 + Math.random() * 0.026;
+    dust.radius = body.type === 'blackhole' ? 0.75 + Math.random() * 0.85 : 0.28 + Math.random() * 0.45;
     dust.baseRadius = 2;
     dust.visualScale = dust.radius / dust.baseRadius;
     dust.isDust = true;
@@ -1989,6 +1989,7 @@ function seedDustRing(body) {
     const speed = Math.sqrt(Math.max(1, state.gravityScale * Math.max(1, body.mass) / Math.max(12, radius))) * 14;
     dust.velocity.copy(body.velocity).addScaledVector(tangent, speed);
     dust.angularVelocity = (Math.random() - 0.5) * 1.8;
+    if (body.type !== 'blackhole') dust.lifetime = 18 + Math.random() * 20;
     state.bodies.push(dust);
   }
   body.shockwave = Math.max(body.shockwave ?? 0, 0.65);
@@ -1997,14 +1998,14 @@ function seedDustRing(body) {
 }
 
 function seedSolarWind(body) {
-  const count = 66;
+  const count = 24;
   for (let i = 0; i < count; i++) {
     const dir = randomDirection();
     const pos = body.position.clone().addScaledVector(dir, body.radius * (1.15 + Math.random() * 0.65));
     const dust = factory.create('dust', pos);
     dust.label = 'Solar Wind';
-    dust.mass = 0.018 + Math.random() * 0.04;
-    dust.radius = 0.48 + Math.random() * 0.75;
+    dust.mass = 0.01 + Math.random() * 0.024;
+    dust.radius = 0.22 + Math.random() * 0.34;
     dust.baseRadius = 2;
     dust.visualScale = dust.radius / dust.baseRadius;
     dust.isDust = true;
@@ -2013,15 +2014,16 @@ function seedSolarWind(body) {
     tintBody(dust, jitterColor(Math.random() > 0.5 ? 0xffd36b : 0xff7442, 0.12));
     const swirl = new THREE.Vector3(-dir.y, dir.x, dir.z * 0.22).normalize();
     dust.velocity.copy(body.velocity)
-      .addScaledVector(dir, 52 + Math.random() * 95)
-      .addScaledVector(swirl, 18 + Math.random() * 34);
+      .addScaledVector(dir, 42 + Math.random() * 72)
+      .addScaledVector(swirl, 12 + Math.random() * 26);
     dust.angularVelocity = (Math.random() - 0.5) * 2.4;
+    dust.lifetime = 8 + Math.random() * 12;
     state.bodies.push(dust);
   }
   body.shockwave = Math.max(body.shockwave ?? 0, 0.8);
   body.fieldStress = Math.max(body.fieldStress ?? 0, 0.5);
-  particles.burst(body.position, 0xffd36b, 86, 125, 'radiation');
-  nebula.burst(body.position, { count: 90, colorA: '#ffb35d', colorB: '#fff4a8', speed: 118, life: 1.4, radius: [8, 30], drift: 52 });
+  particles.burst(body.position, 0xffd36b, 46, 105, 'radiation');
+  nebula.burst(body.position, { count: 42, colorA: '#ffb35d', colorB: '#fff4a8', speed: 94, life: 1.1, radius: [6, 22], drift: 38 });
   ui.status.textContent = `${body.label} solar wind seeded`;
 }
 
@@ -2074,7 +2076,7 @@ function seedDirectedDust(position, direction, count, color, speed, mass = 0.06,
 }
 
 function seedCaptureRing(host, radius) {
-  const count = Math.min(14, Math.max(5, Math.round(radius / 22)));
+  const count = Math.min(7, Math.max(3, Math.round(radius / 42)));
   const color = host.type === 'mars' ? 0xff9d62 : host.type === 'jupiter' ? 0xffd39a : 0x72fff0;
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2 + Math.random() * 0.08;
@@ -2082,8 +2084,8 @@ function seedCaptureRing(host, radius) {
     const position = host.position.clone().add(new THREE.Vector3(Math.cos(a) * radius, Math.sin(a) * radius, lift));
     const dust = factory.create('dust', position);
     dust.label = 'Capture Spark';
-    dust.mass = 0.006 + Math.random() * 0.012;
-    dust.radius = 0.2 + Math.random() * 0.28;
+    dust.mass = 0.004 + Math.random() * 0.009;
+    dust.radius = 0.12 + Math.random() * 0.2;
     dust.baseRadius = 2;
     dust.visualScale = dust.radius / dust.baseRadius;
     dust.heat = 0.35;
@@ -2092,7 +2094,7 @@ function seedCaptureRing(host, radius) {
     tintBody(dust, jitterColor(color, 0.12));
     const tangent = new THREE.Vector3(-Math.sin(a), Math.cos(a), lift * 0.002).normalize();
     dust.velocity.copy(host.velocity).addScaledVector(tangent, 18 + Math.random() * 24);
-    dust.lifetime = 5 + Math.random() * 7;
+    dust.lifetime = 3 + Math.random() * 5;
     state.bodies.push(dust);
   }
 }
