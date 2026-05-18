@@ -239,6 +239,7 @@ export class UI {
     this.inspector.querySelector('[data-readout="depth"]').textContent = body.position.z.toFixed(1);
     this.inspector.querySelector('[data-readout="w"]').textContent = (body.w ?? 0).toFixed(1);
     this.inspector.querySelector('[data-readout="dilation"]').textContent = (body.timeDilation ?? 1).toFixed(2);
+    this.inspector.querySelector('[data-readout="emergent"]').textContent = this.emergentStatus(body);
   }
 
   buildInspector(body) {
@@ -258,7 +259,7 @@ export class UI {
         <dt>Time</dt><dd data-readout="dilation">${(body.timeDilation ?? 1).toFixed(2)}</dd>
         <dt>Class</dt><dd>${body.category}</dd>
         <dt>Material</dt><dd>${body.materialProfile ?? 'unknown'}</dd>
-        <dt>Emergent</dt><dd>${this.emergentStatus(body)}</dd>
+        <dt>Emergent</dt><dd data-readout="emergent">${this.emergentStatus(body)}</dd>
       </dl>
       <h3>Physical</h3>
       <div class="inspector-controls">
@@ -302,6 +303,7 @@ export class UI {
         <button data-action="explode">Burst</button>
         <button data-action="ignite">Ignite</button>
         <button data-action="binary">Binary</button>
+        <button data-action="survey">Survey</button>
         <button data-action="flare">Flare</button>
         <button data-action="release">Release</button>
         <button data-action="z-down">Z -</button>
@@ -362,8 +364,10 @@ export class UI {
     if (body.craters) bits.push(`${body.craters} crater${body.craters === 1 ? '' : 's'}`);
     if (body.damage) bits.push(`damage ${(body.damage * 100).toFixed(0)}%`);
     if (body.surfaceMissions) bits.push(`${body.surfaceMissions} surface contact${body.surfaceMissions === 1 ? '' : 's'}`);
+    if (body.surveyed) bits.push(`${body.surveyed} survey${body.surveyed === 1 ? '' : 's'}`);
     if (body.habitability) bits.push(`habitable ${(body.habitability * 100).toFixed(0)}%`);
     if (body.biosphere) bits.push(`biosphere ${(body.biosphere * 100).toFixed(0)}%`);
+    if (body.worldSurvey) bits.push(body.worldSurvey);
     if (body.satelliteCount) bits.push(`${body.satelliteCount} capture${body.satelliteCount === 1 ? '' : 's'}`);
     if (body.accretion && body.accretion > 0.5) bits.push(`accretion ${body.accretion.toFixed(1)}`);
     if (body.phaseShift && body.phaseShift > 0.05) bits.push(`phase ${(body.phaseShift * 100).toFixed(0)}%`);

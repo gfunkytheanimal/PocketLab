@@ -1362,6 +1362,7 @@ function updateBodyVisual(body, dt) {
       shell.scale.setScalar(1 + body.atmosphere * 0.22 + Math.sin(performance.now() * 0.0018 + body.id) * 0.025);
     }
   }
+  if (body.category === 'planetary') updateWorldSignatureVisual(body, dt);
   if (body.heat > 0 && body.mesh.material?.emissiveIntensity !== undefined && body.type !== 'star') {
     body.mesh.material.emissiveIntensity = (0.55 + body.heat * 1.8) * (body.glow ?? 1);
   } else if (body.mesh.material?.emissiveIntensity !== undefined && body.type !== 'star') {
@@ -1509,6 +1510,82 @@ function cachedBodyMaterials(body) {
   return materials;
 }
 
+function updateWorldSignatureVisual(body, dt) {
+  const signature = [
+    Math.floor((body.water ?? 0) * 10),
+    Math.floor((body.biosphere ?? 0) * 10),
+    Math.min(9, body.surfaceMissions ?? 0),
+    Math.min(9, body.surveyed ?? 0),
+    Math.min(9, body.craters ?? 0),
+    Math.floor((body.damage ?? 0) * 10)
+  ].join(':');
+  let layer = body.group.children.find((child) => child.name === 'world-signature-layer');
+  if (!layer || layer.userData.signature !== signature || layer.userData.radius !== body.baseRadius) {
+    if (layer) {
+      body.group.remove(layer);
+      layer.geometry?.dispose();
+      layer.material?.dispose();
+    }
+    layer = createWorldSignatureLayer(body, signature);
+    body.group.add(layer);
+  }
+  layer.rotation.y += dt * (0.035 + (body.biosphere ?? 0) * 0.04);
+  layer.rotation.z += dt * (0.012 + (body.water ?? 0) * 0.025);
+  const material = layer.material;
+  material.opacity = Math.min(0.92, 0.28 + (body.water ?? 0) * 0.22 + (body.biosphere ?? 0) * 0.28 + Math.min(0.18, (body.surfaceMissions ?? 0) * 0.025));
+}
+
+function createWorldSignatureLayer(body, signature) {
+  const geometry = new THREE.BufferGeometry();
+  const positions = [];
+  const colors = [];
+  const radius = body.baseRadius * 1.045;
+  const waterCount = Math.floor((body.water ?? 0) * 48);
+  const bioCount = Math.floor((body.biosphere ?? 0) * 64);
+  const missionCount = Math.min(18, (body.surfaceMissions ?? 0) * 3);
+  const surveyCount = Math.min(20, (body.surveyed ?? 0) * 10);
+  const craterCount = Math.min(34, (body.craters ?? 0) * 4 + Math.floor((body.damage ?? 0) * 12));
+  addWorldDots(positions, colors, waterCount, radius, new THREE.Color(0x70dfff), body.id * 13 + 1, 0.34);
+  addWorldDots(positions, colors, bioCount, radius * 1.006, new THREE.Color(0x6dff9b), body.id * 17 + 7, 0.62);
+  addWorldDots(positions, colors, missionCount, radius * 1.012, new THREE.Color(0xffd36b), body.id * 19 + 11, 0.18);
+  addWorldDots(positions, colors, surveyCount, radius * 1.018, new THREE.Color(0xfff0a8), body.id * 29 + 3, 0.5);
+  addWorldDots(positions, colors, craterCount, radius * 1.002, new THREE.Color(0x2a1712), body.id * 23 + 5, 0.78);
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const material = new THREE.PointsMaterial({
+    size: Math.max(0.85, body.baseRadius * 0.075),
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.42,
+    depthWrite: false,
+    sizeAttenuation: true,
+    blending: THREE.AdditiveBlending
+  });
+  const points = new THREE.Points(geometry, material);
+  points.name = 'world-signature-layer';
+  points.userData.signature = signature;
+  points.userData.radius = body.baseRadius;
+  return points;
+}
+
+function addWorldDots(positions, colors, count, radius, color, seed, latitudeBias = 0.5) {
+  for (let i = 0; i < count; i++) {
+    const t = seededNoise(seed + i * 13.37);
+    const u = seededNoise(seed * 2.1 + i * 7.91);
+    const theta = t * Math.PI * 2;
+    const latitude = Math.asin((u - 0.5) * 2) * (0.45 + latitudeBias * 0.55);
+    const ring = Math.cos(latitude);
+    positions.push(Math.cos(theta) * ring * radius, Math.sin(theta) * ring * radius, Math.sin(latitude) * radius);
+    const jitter = 0.8 + seededNoise(seed * 3.7 + i * 5.17) * 0.25;
+    colors.push(color.r * jitter, color.g * jitter, color.b * jitter);
+  }
+}
+
+function seededNoise(value) {
+  const raw = Math.sin(value * 12.9898 + 78.233) * 43758.5453;
+  return raw - Math.floor(raw);
+}
+
 function updateAstronautVisual(body, dt) {
   const response = state.ragdollScale ?? 1;
   const stress = (body.tidalStress ?? 0) * response;
@@ -1565,6 +1642,7 @@ function inspectAction(action) {
   if (action === 'explode') burstSelected(body);
   if (action === 'ignite') igniteSelected(body);
   if (action === 'binary') makeBinary(body);
+  if (action === 'survey') surveySelected(body);
   if (action === 'release') releaseBody(body);
   if (action === 'flare') {
     body.heat = 1;
@@ -1591,6 +1669,31 @@ function inspectAction(action) {
     state.selected = null;
   }
   ui.updateInspector();
+}
+
+function surveySelected(body) {
+  if (body.category !== 'planetary') {
+    ui.status.textContent = 'survey works best on planets and moons';
+    particles.burst(body.position, 0x72fff0, 18, 52, 'spark');
+    return;
+  }
+  const traits = [];
+  if ((body.water ?? 0) > 0.45) traits.push('ocean world');
+  else if ((body.water ?? 0) > 0.08) traits.push('icy deposits');
+  if ((body.atmosphere ?? 0) > 0.35) traits.push('thick atmosphere');
+  else if ((body.atmosphere ?? 0) > 0.08) traits.push('thin atmosphere');
+  if ((body.biosphere ?? 0) > 0.05) traits.push('biosignatures');
+  if ((body.craters ?? 0) > 0) traits.push(`${body.craters} impact sites`);
+  if ((body.surfaceMissions ?? 0) > 0) traits.push(`${body.surfaceMissions} surface contacts`);
+  if ((body.damage ?? 0) > 0.2) traits.push('unstable crust');
+  body.surveyed = (body.surveyed ?? 0) + 1;
+  body.worldSurvey = traits.length ? traits.join(', ') : 'unmapped quiet world';
+  body.fieldStress = Math.max(body.fieldStress ?? 0, 0.35);
+  body.glow = Math.max(body.glow ?? 1, 1.12);
+  seedFineDust(body.position, 26, 0x72fff0, 46, 0.018, false, 'Survey Ping');
+  particles.burst(body.position, 0x72fff0, 42, 76, 'spark');
+  nebula.burst(body.position, { count: 38, colorA: '#72fff0', colorB: '#ffffff', speed: 62, life: 1.1, radius: [3, 12], drift: 18 });
+  ui.status.textContent = `survey: ${body.worldSurvey}`;
 }
 
 function burstSelected(body) {
@@ -2152,8 +2255,10 @@ function serializeBody(body) {
     water: body.water,
     craters: body.craters,
     surfaceMissions: body.surfaceMissions,
+    surveyed: body.surveyed,
     habitability: body.habitability,
     biosphere: body.biosphere,
+    worldSurvey: body.worldSurvey,
     tailLength: body.tailLength,
     tailWidth: body.tailWidth,
     tailOpacity: body.tailOpacity,
@@ -2171,7 +2276,7 @@ function hydrateBody(body, saved) {
   body.angularVelocity = saved.angularVelocity ?? body.angularVelocity;
   body.frozen = Boolean(saved.frozen);
   body.showTrail = saved.showTrail ?? body.showTrail;
-  for (const prop of ['heat', 'glow', 'fieldStress', 'shockwave', 'damage', 'w', 'wVelocity', 'timeDilation', 'phaseShift', 'atmosphere', 'water', 'craters', 'surfaceMissions', 'habitability', 'biosphere', 'tailLength', 'tailWidth', 'tailOpacity', 'accretion']) {
+  for (const prop of ['heat', 'glow', 'fieldStress', 'shockwave', 'damage', 'w', 'wVelocity', 'timeDilation', 'phaseShift', 'atmosphere', 'water', 'craters', 'surfaceMissions', 'surveyed', 'habitability', 'biosphere', 'worldSurvey', 'tailLength', 'tailWidth', 'tailOpacity', 'accretion']) {
     if (saved[prop] !== undefined) body[prop] = saved[prop];
   }
   body.group.scale.setScalar(body.radius / body.baseRadius);
