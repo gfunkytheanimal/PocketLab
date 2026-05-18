@@ -192,7 +192,7 @@ export class ObjectFactory {
         }
       });
       for (const child of group.children) {
-        if (child.userData.placeholder || child.userData.rigVisual) child.visible = false;
+        if (child.userData.placeholder || child.userData.rigVisual || child.userData.placeholderDecoration) child.visible = false;
       }
       group.add(model);
     };
@@ -527,19 +527,25 @@ export class ObjectFactory {
     if (asset.type === 'star') {
       const glow = new THREE.PointLight(asset.color, 2.4, 420);
       group.add(glow);
-      for (let i = 0; i < 9; i++) {
-        const flare = new THREE.Mesh(
-          new THREE.RingGeometry(asset.radius * (0.34 + Math.random() * 0.48), asset.radius * (0.36 + Math.random() * 0.5), 32),
-          new THREE.MeshBasicMaterial({ color: i % 2 ? 0xfff1a4 : 0xff7a22, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+      for (let i = 0; i < 5; i++) {
+        const shell = new THREE.Mesh(
+          new THREE.SphereGeometry(asset.radius * (1.08 + i * 0.13), 48, 24),
+          new THREE.MeshBasicMaterial({
+            color: i % 2 ? 0xfff1a4 : 0xff7a22,
+            transparent: true,
+            opacity: 0.12 - i * 0.012,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.BackSide
+          })
         );
-        flare.name = 'star-flare';
-        flare.rotation.z = Math.random() * Math.PI;
-        flare.position.z = asset.radius * 0.95;
-        group.add(flare);
+        shell.name = 'star-flare';
+        shell.scale.set(1 + Math.random() * 0.06, 1 + Math.random() * 0.06, 1 + Math.random() * 0.06);
+        group.add(shell);
       }
       const corona = new THREE.Mesh(
-        new THREE.RingGeometry(asset.radius * 1.25, asset.radius * 1.62, 96),
-        new THREE.MeshBasicMaterial({ color: 0xffd36b, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+        new THREE.SphereGeometry(asset.radius * 1.7, 64, 32),
+        new THREE.MeshBasicMaterial({ color: 0xffd36b, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide })
       );
       corona.name = 'star-corona';
       group.add(corona);
@@ -597,6 +603,7 @@ export class ObjectFactory {
       for (const side of [-1, 1]) {
         const panel = new THREE.Mesh(new THREE.BoxGeometry(asset.radius * 1.8, asset.radius * 0.12, 1), panelMat);
         panel.name = 'solar-panel';
+        panel.userData.placeholderDecoration = true;
         panel.position.x = side * asset.radius * 1.9;
         group.add(panel);
       }

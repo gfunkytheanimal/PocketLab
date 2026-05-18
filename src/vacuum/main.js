@@ -1162,6 +1162,11 @@ function updateBodyVisual(body, dt) {
     body.mesh.material.uniforms.uStress.value = body.fieldStress ?? 0;
   }
   applyMaterialTuning(body);
+  if (body.group.children.some((child) => child.name === `${body.type}-model`)) {
+    body.group.children.forEach((child) => {
+      if (child.userData.placeholderDecoration) child.visible = false;
+    });
+  }
   body.group.children.forEach((child) => {
     const uniforms = child.material?.uniforms;
     if (!uniforms) return;
