@@ -1,0 +1,157 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #020307;
+  color: #eaf8ff;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#blackhole-canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #020307;
+}
+
+#particle-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.86;
+}
+
+.topbar {
+  position: fixed;
+  z-index: 3;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: none;
+}
+
+button {
+  pointer-events: auto;
+  min-width: 112px;
+  height: 38px;
+  border: 1px solid rgba(160, 235, 255, 0.34);
+  border-radius: 8px;
+  background: rgba(5, 14, 22, 0.78);
+  color: #dffbff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  box-shadow: 0 0 24px rgba(63, 210, 255, 0.08);
+}
+
+button:hover,
+button.active {
+  border-color: rgba(255, 214, 127, 0.8);
+  color: #fff0bd;
+}
+
+.panel {
+  position: fixed;
+  z-index: 3;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 28px));
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  border: 1px solid rgba(150, 240, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(3, 10, 17, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.panel strong,
+.panel span {
+  display: block;
+}
+
+.panel strong {
+  font-size: 12px;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.panel span {
+  margin-top: 4px;
+  color: rgba(216, 244, 255, 0.68);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.key {
+  height: 42px;
+  min-width: 0;
+  padding: 0;
+  border-color: rgba(150, 240, 255, 0.22);
+}
+
+.key span,
+.key small {
+  display: block;
+}
+
+.key span {
+  font-size: 11px;
+}
+
+.key small {
+  margin-top: 2px;
+  color: #7ff8eb;
+  font-size: 10px;
+}
+
+.key.active {
+  background: rgba(255, 199, 91, 0.18);
+  box-shadow: 0 0 28px rgba(255, 188, 86, 0.38);
+}
+
+#audio-file {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .panel {
+    grid-template-columns: 1fr;
+  }
+
+  .keys {
+    gap: 4px;
+  }
+
+  .key {
+    height: 38px;
+  }
+
+  button {
+    min-width: 94px;
+  }
+}

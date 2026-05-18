@@ -1,0 +1,63 @@
+export const G = 34;
+export const SOFTENING = 18;
+export const MAX_TRAIL_POINTS = 240;
+
+export const ASSETS = [
+  { type: 'astronaut', category: 'crew', label: 'Astronaut', icon: 'A', mass: 0.55, radius: 5.5, color: 0xddefff, emissive: 0x223344 },
+  { type: 'planet', category: 'planetary', label: 'Planet', icon: 'P', mass: 42, radius: 16, color: 0x38a1ff, emissive: 0x07243a },
+  { type: 'mars', category: 'planetary', label: 'Mars', icon: 'V', mass: 28, radius: 13, color: 0xb65a37, emissive: 0x2a0d08 },
+  { type: 'jupiter', category: 'planetary', label: 'Jupiter', icon: 'J', mass: 84, radius: 25, color: 0xd79b68, emissive: 0x24140a },
+  { type: 'moon', category: 'planetary', label: 'Moon', icon: 'M', mass: 9, radius: 9, color: 0xcfd5dc, emissive: 0x22252a },
+  { type: 'star', category: 'stellar', label: 'Star', icon: 'S', mass: 130, radius: 22, color: 0xffd36b, emissive: 0xff8a22 },
+  { type: 'blackhole', category: 'singularity', label: 'Black Hole', icon: 'B', mass: 240, radius: 20, color: 0x05070b, emissive: 0x2aa7ff },
+  { type: 'comet', category: 'small-body', label: 'Comet', icon: 'C', mass: 2.2, radius: 6, color: 0xaeefff, emissive: 0x2fc8ff },
+  { type: 'gas', category: 'gas', label: 'Gas Cloud', icon: 'G', mass: 4, radius: 22, color: 0x9a72ff, emissive: 0x5533aa },
+  { type: 'station', category: 'spacecraft', label: 'Station', icon: 'T', mass: 5, radius: 12, color: 0xb8c7d9, emissive: 0x1a2738 },
+  { type: 'mir', category: 'spacecraft', label: 'Mir Station', icon: 'R', mass: 5.5, radius: 13, color: 0xb8c7d9, emissive: 0x1a2738 },
+  { type: 'hubble', category: 'spacecraft', label: 'Hubble Telescope', icon: 'H', mass: 4.5, radius: 12, color: 0xb8c7d9, emissive: 0x1a2738 },
+  { type: 'jwst', category: 'spacecraft', label: 'Webb Telescope', icon: 'J', mass: 5, radius: 14, color: 0xd0b06b, emissive: 0x3a2b10 },
+  { type: 'mro', category: 'spacecraft', label: 'Mars Orbiter', icon: 'M', mass: 4.2, radius: 11, color: 0xc5d3e0, emissive: 0x1a2738 },
+  { type: 'voyager', category: 'spacecraft', label: 'Voyager Probe', icon: 'V', mass: 3.2, radius: 10, color: 0xd6c29a, emissive: 0x332211 },
+  { type: 'rover', category: 'spacecraft', label: 'Perseverance Rover', icon: 'R', mass: 6, radius: 12, color: 0xd5b48a, emissive: 0x302010 },
+  { type: 'dish', category: 'spacecraft', label: 'Deep Space Dish', icon: 'Q', mass: 18, radius: 18, color: 0xbfd2df, emissive: 0x18283a },
+  { type: 'probe', category: 'spacecraft', label: 'Cassini Probe', icon: 'N', mass: 3.6, radius: 10, color: 0xd8c8a6, emissive: 0x3a2a10 },
+  { type: 'ufo', category: 'spacecraft', label: 'UFO', icon: 'U', mass: 7, radius: 15, color: 0x98ffef, emissive: 0x31ffdc, charge: 0.65 },
+  { type: 'alien', category: 'crew', label: 'Alien', icon: 'Z', mass: 0.45, radius: 5.2, color: 0x9dff6e, emissive: 0x34ff7a, charge: -0.25 },
+  { type: 'magnet', category: 'field', label: 'Magnetic Orb', icon: 'O', mass: 14, radius: 13, color: 0xff4ed6, emissive: 0x9c1fff, charge: 1 },
+  { type: 'portal', category: 'field', label: 'Wormhole', icon: 'W', mass: 0, radius: 18, color: 0x50ffc8, emissive: 0x14ffaa },
+  { type: 'asteroid', category: 'small-body', label: 'Asteroid', icon: 'X', mass: 8, radius: 11, color: 0x9a8171, emissive: 0x22160f, charge: 0.1 },
+  { type: 'dust', category: 'dust', label: 'Space Dust', icon: '*', mass: 0.08, radius: 2, color: 0x9fefff, emissive: 0x6cecff, charge: 0.18 },
+  { type: 'debris', category: 'debris', label: 'Debris Rocks', icon: 'D', mass: 1.5, radius: 5, color: 0x9a8171, emissive: 0x22160f },
+  { type: 'laser', category: 'energy', label: 'Light Beam', icon: 'L', mass: 0.2, radius: 4, color: 0xff335c, emissive: 0xff2244 },
+  { type: 'mystery', category: 'spacecraft', label: 'Lunar Module', icon: 'Y', mass: 26, radius: 14, color: 0x78ff7a, emissive: 0x34ff6d }
+];
+
+export const PRESETS = {
+  astronaut: { velocity: [0, 0, 0], angular: 0 },
+  planet: { velocity: [0, 0, 0], angular: 0 },
+  mars: { velocity: [0, 0, 0], angular: 0 },
+  jupiter: { velocity: [0, 0, 0], angular: 0 },
+  moon: { velocity: [0, 0, 0], angular: 0 },
+  star: { velocity: [0, 0, 0], angular: 0 },
+  blackhole: { velocity: [0, 0, 0], angular: 0 },
+  comet: { velocity: [0, 0, 0], angular: 0 },
+  gas: { velocity: [0, 0, 0], angular: 0 },
+  station: { velocity: [0, 0, 0], angular: 0 },
+  mir: { velocity: [0, 0, 0], angular: 0 },
+  hubble: { velocity: [0, 0, 0], angular: 0 },
+  jwst: { velocity: [0, 0, 0], angular: 0 },
+  mro: { velocity: [0, 0, 0], angular: 0 },
+  voyager: { velocity: [0, 0, 0], angular: 0 },
+  rover: { velocity: [0, 0, 0], angular: 0 },
+  dish: { velocity: [0, 0, 0], angular: 0 },
+  probe: { velocity: [0, 0, 0], angular: 0 },
+  ufo: { velocity: [0, 0, 0], angular: 0 },
+  alien: { velocity: [0, 0, 0], angular: 0 },
+  magnet: { velocity: [0, 0, 0], angular: 0 },
+  portal: { velocity: [0, 0, 0], angular: 0 },
+  asteroid: { velocity: [0, 0, 0], angular: 0 },
+  dust: { velocity: [0, 0, 0], angular: 0 },
+  debris: { velocity: [0, 0, 0], angular: 0 },
+  laser: { velocity: [0, 0, 0], angular: 0 },
+  mystery: { velocity: [0, 0, 0], angular: 0 }
+};

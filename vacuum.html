@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vacuum Playground</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="scene"></canvas>
+      <div id="quickbar">
+        <button id="library-toggle" type="button" title="Toggle asset library">Assets</button>
+        <button id="controls-toggle" type="button" title="Toggle lab controls">Lab</button>
+        <button id="inspector-toggle" type="button" title="Toggle inspector">Inspect</button>
+        <button id="help-toggle" type="button" title="Show controls">?</button>
+        <button id="cinema-btn" type="button" title="Hide panels">Cinema</button>
+      </div>
+      <aside id="library" aria-label="Asset library">
+        <div id="asset-list"></div>
+        <div id="toolbar">
+          <details class="toolbar-section" open>
+            <summary>Playback</summary>
+            <div class="toolbar-row">
+              <button id="pause-btn" type="button">Pause</button>
+              <button id="gravity-btn" type="button">Fields</button>
+              <button id="topology-btn" type="button">Topology</button>
+              <button id="trails-btn" type="button">Trails</button>
+              <button id="particles-btn" type="button">Cosmic FX</button>
+              <button id="filaments-btn" type="button">Filaments</button>
+              <button id="bounds-btn" type="button">Bounds</button>
+              <button id="pulse-btn" type="button">Pulse</button>
+              <button id="fossilize-btn" type="button" title="Bake the current chaos into the distant nebula, then clear the live simulation.">Fossilize</button>
+              <button id="dev-mode-btn" type="button">Dev Mode</button>
+              <button id="clear-dust-btn" type="button">Clear Dust</button>
+              <button id="clear-fossils-btn" type="button">Clear Fossils</button>
+              <button id="clear-trails-btn" type="button">Clear Trails</button>
+              <button id="reset-btn" type="button">Reset</button>
+            </div>
+          </details>
+          <details class="toolbar-section" open>
+            <summary>Camera</summary>
+            <div class="toolbar-row">
+              <button class="camera-btn" data-view="top" type="button">Top</button>
+              <button class="camera-btn" data-view="iso" type="button">3D</button>
+              <button class="camera-btn" data-view="side" type="button">Side</button>
+              <button class="camera-btn" data-view="follow" type="button">Follow</button>
+            </div>
+          </details>
+          <details class="toolbar-section" open>
+            <summary>Powers</summary>
+            <div class="toolbar-row">
+              <button class="tool-btn" data-tool="select" type="button">Select</button>
+              <button class="tool-btn" data-tool="push" type="button">Push</button>
+              <button class="tool-btn" data-tool="pull" type="button">Pull</button>
+              <button class="tool-btn" data-tool="heat" type="button">Heat</button>
+              <button class="tool-btn" data-tool="freeze" type="button">Freeze</button>
+              <button class="tool-btn" data-tool="orbit" type="button">Orbit</button>
+              <button class="tool-btn" data-tool="paint" type="button">Paint</button>
+              <button class="tool-btn" data-tool="fold" type="button">Fold</button>
+              <button class="tool-btn" data-tool="unfold" type="button">Unfold</button>
+            </div>
+          </details>
+          <details class="toolbar-section">
+            <summary>Brush</summary>
+            <div class="toolbar-row">
+              <button class="brush-btn" data-brush="stars" type="button" title="Paint tiny playable star motes.">Stars</button>
+              <button class="brush-btn" data-brush="gas" type="button" title="Paint soft gas that swirls and exchanges heat.">Gas</button>
+              <button class="brush-btn" data-brush="charge" type="button" title="Paint charged motes for magnets and auroras.">Charge</button>
+              <button class="brush-btn" data-brush="heat" type="button" title="Paint heat into nearby objects without spawning bodies.">Heat</button>
+            </div>
+            <div class="toolbar-row sliders compact-sliders">
+              <label>Size <input id="brush-size" type="range" min="0.4" max="3" step="0.1" value="1" /></label>
+              <label>Strength <input id="brush-strength" type="range" min="0.2" max="3" step="0.1" value="1" /></label>
+            </div>
+          </details>
+          <details class="toolbar-section">
+            <summary>Scenarios</summary>
+            <div class="toolbar-row">
+              <button class="preset-btn" data-preset="solar" type="button">Solar</button>
+              <button class="preset-btn" data-preset="feeding" type="button">Feed</button>
+              <button class="preset-btn" data-preset="deep-space" type="button">Deep</button>
+              <button class="preset-btn" data-preset="moon-capture" type="button">Capture</button>
+              <button class="preset-btn" data-preset="slingshot" type="button">Slingshot</button>
+              <button class="preset-btn" data-preset="tidal" type="button">Tidal</button>
+              <button class="preset-btn" data-preset="binary" type="button">Binary</button>
+              <button class="preset-btn" data-preset="first-contact" type="button">Contact</button>
+              <button class="preset-btn" data-preset="alien-lab" type="button">Alien Lab</button>
+              <button class="preset-btn" data-preset="probe-swarm" type="button">Swarm</button>
+              <button class="preset-btn" data-preset="ring-chaos" type="button">Rings</button>
+              <button class="preset-btn" data-preset="horizon-merge" type="button">Merge</button>
+              <button class="preset-btn" data-preset="surprise" type="button">Surprise</button>
+            </div>
+          </details>
+          <details class="toolbar-section">
+            <summary>Physics Presets</summary>
+            <div class="toolbar-row">
+              <button class="physics-preset-btn" data-physics-preset="chill" type="button" title="Gentler sandbox forces for careful placement.">Chill</button>
+              <button class="physics-preset-btn" data-physics-preset="orbit" type="button" title="Balanced gravity and damping for stable orbit experiments.">Orbit</button>
+              <button class="physics-preset-btn" data-physics-preset="chaos" type="button" title="Higher force limits, bouncier impacts, more action.">Chaos</button>
+              <button class="physics-preset-btn" data-physics-preset="theater" type="button" title="Cinematic reactions with strong spacetime visuals.">Theater</button>
+            </div>
+          </details>
+          <details class="toolbar-section">
+            <summary>Physics</summary>
+            <div class="toolbar-row sliders">
+              <label>Time <input id="time-scale" type="range" min="0.1" max="3" step="0.1" value="1" /></label>
+              <label>Gravity <input id="gravity-scale" type="range" min="4" max="90" step="1" value="34" /></label>
+              <label>Soften <input id="softening-scale" type="range" min="1" max="80" step="1" value="18" /></label>
+              <label>Capture <input id="capture-scale" type="range" min="0" max="4" step="0.1" value="1.4" /></label>
+              <label>Substeps <input id="substeps" type="range" min="1" max="8" step="1" value="2" /></label>
+              <label>Damping <input id="damping" type="range" min="0.96" max="1" step="0.001" value="0.996" /></label>
+              <label>Bounce <input id="restitution" type="range" min="0" max="1.15" step="0.01" value="0.72" /></label>
+              <label>Walls <input id="boundary-restitution" type="range" min="0" max="1.15" step="0.01" value="0.78" /></label>
+              <label>Max Accel <input id="max-acceleration" type="range" min="120" max="1800" step="20" value="850" /></label>
+              <label>Max Speed <input id="max-velocity" type="range" min="80" max="1200" step="10" value="520" /></label>
+              <label>Spacetime <input id="spacetime-scale" type="range" min="0" max="3" step="0.05" value="1" /></label>
+              <label>W Project <input id="w-projection" type="range" min="0" max="3" step="0.05" value="0.65" /></label>
+              <label>Ragdoll <input id="ragdoll-scale" type="range" min="0" max="3" step="0.1" value="1.35" /></label>
+              <label>Bounds <input id="bounds-size" type="range" min="260" max="1400" step="20" value="820" /></label>
+              <label>Depth <input id="depth-spread" type="range" min="0" max="420" step="10" value="140" /></label>
+              <label>Field <input id="field-density" type="range" min="0.4" max="2.5" step="0.1" value="1" /></label>
+              <label>Trail <input id="trail-length" type="range" min="40" max="520" step="10" value="240" /></label>
+            </div>
+          </details>
+          <details id="dev-panel" class="toolbar-section hidden">
+            <summary>Dev Tuning</summary>
+            <div class="toolbar-row sliders">
+              <label>Pixels <input id="dev-render-scale" data-dev-prop="renderScale" type="range" min="0.5" max="1.7" step="0.05" value="1.7" /></label>
+              <label>Bloom <input id="dev-bloom-strength" data-dev-prop="bloomStrength" type="range" min="0" max="2.5" step="0.05" value="0.62" /></label>
+              <label>Bloom Rad <input id="dev-bloom-radius" data-dev-prop="bloomRadius" type="range" min="0" max="2" step="0.05" value="0.72" /></label>
+              <label>Bloom Cut <input id="dev-bloom-threshold" data-dev-prop="bloomThreshold" type="range" min="0" max="1" step="0.01" value="0.18" /></label>
+              <label>Dust Cap <input id="dev-max-dust" data-dev-prop="maxDust" type="range" min="40" max="900" step="10" value="260" /></label>
+              <label>Nebula <input id="dev-nebula-opacity" data-dev-prop="nebulaOpacity" type="range" min="0" max="1.8" step="0.05" value="1" /></label>
+              <label>Shake <input id="dev-shake-scale" data-dev-prop="shakeScale" type="range" min="0" max="3" step="0.05" value="1" /></label>
+            </div>
+          </details>
+        </div>
+      </aside>
+      <section id="inspector" class="hidden"></section>
+      <section id="help-panel" class="hidden">
+        <strong>Controls</strong>
+        <span>Left drag empty space to orbit. Left drag objects to move them. Right drag pans. Scroll zooms deep in/out. Space pauses. R resets. G fields. T trails.</span>
+      </section>
+      <div id="hud">
+        <strong>Vacuum Playground</strong>
+        <span id="status">drag something into empty space</span>
+      </div>
+      <div id="coordinates" class="hidden">X 0 Y 0 Z 0</div>
+      <div id="selection-badge" class="hidden"></div>
+    </main>
+    <script type="module" src="/src/vacuum/main.js"></script>
+  </body>
+</html>

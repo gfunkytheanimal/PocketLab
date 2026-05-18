@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Event Horizon Instrument</title>
+  </head>
+  <body>
+    <canvas id="blackhole-canvas"></canvas>
+    <canvas id="particle-canvas"></canvas>
+    <div class="topbar">
+      <button id="upload-button" type="button">Upload MP3</button>
+      <button id="mic-button" type="button">Microphone</button>
+      <button id="mode-button" type="button">Duality</button>
+    </div>
+    <section class="panel">
+      <div>
+        <strong>Event Horizon Instrument</strong>
+        <span id="status">shader loading</span>
+      </div>
+      <div class="keys" id="keys"></div>
+    </section>
+    <input id="audio-file" type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/*" />
+    <script type="module" src="/src/blackhole/main.js"></script>
+  </body>
+</html>

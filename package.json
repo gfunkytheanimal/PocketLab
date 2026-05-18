@@ -1,5 +1,5 @@
 {
-  "name": "recursive-attractor-explorer",
+  "name": "pocket-lab",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,9 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "lil-gui": "^0.20.0",
-    "playcanvas": "^2.18.0"
+    "@babel/runtime": "^7.29.2",
+    "three": "^0.184.0",
+    "three-nebula": "^10.0.3"
   },
   "devDependencies": {
     "vite": "^5.4.11"
