@@ -405,6 +405,28 @@ function consumePhysicsEvents() {
       ui.status.textContent = 'wormhole charged by stellar contact';
       continue;
     }
+    if (event.type === 'whitehole-jet') {
+      const portal = state.bodies.find((item) => item.id === event.sourceId);
+      const hole = state.bodies.find((item) => item.id === event.blackholeId);
+      const direction = event.direction?.clone?.() ?? randomDirection();
+      const severity = event.severity ?? 0.75;
+      if (portal) {
+        portal.label = portal.label.startsWith('White') ? portal.label : 'Whitehole Throat';
+        portal.fieldStress = Math.max(portal.fieldStress ?? 0, severity);
+        portal.shockwave = Math.max(portal.shockwave ?? 0, severity * 0.8);
+        portal.charge = Math.max(portal.charge ?? 0, 1.6);
+      }
+      if (hole) {
+        hole.accretion = Math.max(hole.accretion ?? 0, 2.4);
+        hole.shockwave = Math.max(hole.shockwave ?? 0, 0.35);
+      }
+      seedDirectedDust(event.position, direction, Math.round(24 + severity * 52), 0x9fefff, 90 + severity * 170, 0.035, 'Whitehole Dust');
+      particles.burst(event.position, 0x9fefff, Math.round(50 + severity * 80), 130 + severity * 160, 'radiation');
+      nebula.stream(event.position, direction, { colorA: '#9fefff', colorB: '#ffb35d', count: Math.round(70 + severity * 80), speed: 110 + severity * 120, life: 1.8, radius: [4, 18], drift: 32 });
+      state.cameraShake = Math.max(state.cameraShake, 1.4 + severity * 2.2);
+      ui.status.textContent = 'wormhole vented a whitehole jet';
+      continue;
+    }
     if (event.type === 'blackhole-merge') {
       const eater = state.bodies.find((item) => item.id === event.eaterId);
       if (eater) {
@@ -995,6 +1017,22 @@ function spawnPreset(name) {
     ui.status.textContent = 'event horizon merger seeded';
     setCameraView('cinematic');
   }
+  if (name === 'quasar-jet') {
+    const hole = spawnWith('blackhole', 0, 0, 0, 0, 0, 0);
+    hole.accretion = 3.2;
+    const throat = spawnWith('portal', 74, 4, 18, 6, 10, 0);
+    throat.label = 'Whitehole Throat';
+    throat.charge = 2.2;
+    throat.fieldStress = 1;
+    spawnWith('gas', -190, 36, 18, 70, -2, 0);
+    spawnWith('gas', 150, -120, -30, -46, 38, 6);
+    spawnWith('comet', -280, -80, 64, 135, 36, -8);
+    spawnWith('probe', 185, 118, -54, -48, -28, 10);
+    seedDustRing(hole);
+    seedDirectedDust(throat.position, throat.position.clone().sub(hole.position), 46, 0x9fefff, 165, 0.03, 'Quasar Dust');
+    ui.status.textContent = 'quasar jet lab seeded';
+    setCameraView('cinematic');
+  }
   if (name === 'surprise') {
     const recipes = [surpriseSingularity, surpriseAbduction, surpriseCometPool, surpriseBinaryToy, surpriseWormholeHazard];
     recipes[Math.floor(Math.random() * recipes.length)]();
@@ -1530,6 +1568,33 @@ function seedFineDust(position, count, color, speed, mass = 0.06, hot = false, l
     tintBody(dust, jitterColor(color, 0.16));
     dust.velocity.copy(dir.multiplyScalar(speed * (0.25 + Math.random() * 0.95)));
     dust.angularVelocity = (Math.random() - 0.5) * 1.4;
+    state.bodies.push(dust);
+  }
+}
+
+function seedDirectedDust(position, direction, count, color, speed, mass = 0.06, label = null) {
+  const liveDust = state.bodies.filter((body) => body.isDust).length;
+  const allowed = Math.max(0, Math.min(count, state.maxDust - liveDust));
+  const forward = direction.clone();
+  if (forward.lengthSq() < 0.001) forward.copy(randomDirection());
+  forward.normalize();
+  const sideA = Math.abs(forward.z) < 0.82 ? new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 0, 1)).normalize() : new THREE.Vector3(1, 0, 0);
+  const sideB = new THREE.Vector3().crossVectors(forward, sideA).normalize();
+  for (let i = 0; i < allowed; i++) {
+    const spread = sideA.clone().multiplyScalar((Math.random() - 0.5) * 0.75).addScaledVector(sideB, (Math.random() - 0.5) * 0.75);
+    const dir = forward.clone().add(spread).normalize();
+    const dust = factory.create('dust', position.clone().addScaledVector(dir, 8 + Math.random() * 36));
+    dust.label = label ?? 'Directed Space Dust';
+    dust.mass = mass * (0.35 + Math.random() * 0.75);
+    dust.radius = 0.45 + Math.random() * 0.8;
+    dust.baseRadius = 2;
+    dust.visualScale = dust.radius / dust.baseRadius;
+    dust.heat = 0.65 + Math.random() * 0.35;
+    dust.isDust = true;
+    dust.showTrail = false;
+    tintBody(dust, jitterColor(color, 0.16));
+    dust.velocity.copy(dir.multiplyScalar(speed * (0.55 + Math.random() * 0.8)));
+    dust.angularVelocity = (Math.random() - 0.5) * 2.2;
     state.bodies.push(dust);
   }
 }

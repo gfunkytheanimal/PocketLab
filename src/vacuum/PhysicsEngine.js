@@ -206,6 +206,38 @@ export class PhysicsEngine {
       }
     }
 
+    const portalBlackhole = this.blackholePortalPair(a, b);
+    if (portalBlackhole) {
+      const { blackhole: hole, portal } = portalBlackhole;
+      const towardPortal = portal.position.clone().sub(hole.position);
+      const reach = hole.radius * 9;
+      const distance = Math.max(1, towardPortal.length());
+      if (distance < reach) {
+        const falloff = 1 - distance / reach;
+        towardPortal.normalize();
+        const tangent = new THREE.Vector3(-towardPortal.y, towardPortal.x, towardPortal.z * 0.2).normalize();
+        if (!portal.frozen) {
+          portal.acceleration.addScaledVector(towardPortal, falloff * 42 / Math.max(0.5, portal.mass + 1));
+          portal.acceleration.addScaledVector(tangent, falloff * 34 / Math.max(0.5, portal.mass + 1));
+        }
+        portal.fieldStress = Math.max(portal.fieldStress ?? 0, falloff * 1.2);
+        portal.heat = Math.min(1, (portal.heat ?? 0) + falloff * 0.025);
+        hole.accretion = Math.min(4, (hole.accretion ?? 0) + falloff * 0.018);
+        if (falloff > 0.5 && (portal.reactionCooldown ?? 0) <= 0) {
+          portal.reactionCooldown = 0.72;
+          hole.reactionCooldown = Math.max(hole.reactionCooldown ?? 0, 0.28);
+          this.state.events?.push({
+            type: 'whitehole-jet',
+            position: portal.position.clone(),
+            sourceId: portal.id,
+            blackholeId: hole.id,
+            direction: towardPortal.clone(),
+            severity: falloff
+          });
+        }
+      }
+    }
+
     const ufo = a.type === 'ufo' ? a : b.type === 'ufo' ? b : null;
     if (ufo) {
       const other = ufo === a ? b : a;
@@ -437,6 +469,12 @@ export class PhysicsEngine {
       position: portal.position.clone()
     });
     return true;
+  }
+
+  blackholePortalPair(a, b) {
+    const blackhole = a.type === 'blackhole' ? a : b.type === 'blackhole' ? b : null;
+    const portal = a.type === 'portal' ? a : b.type === 'portal' ? b : null;
+    return blackhole && portal ? { blackhole, portal } : null;
   }
 
   applyMaterialReaction(a, b, normal) {
