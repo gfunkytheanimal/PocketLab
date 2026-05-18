@@ -186,6 +186,10 @@ export class ObjectFactory {
       model.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(model.scale.x));
       model.rotation.set(...(tuning.rotation ?? [0, 0, 0]));
       model.traverse((child) => {
+        if (child.isLine || child.isLineSegments || child.type === 'Line' || child.type === 'LineSegments') {
+          child.visible = false;
+          return;
+        }
         if (child.isMesh) {
           child.castShadow = false;
           child.receiveShadow = false;
