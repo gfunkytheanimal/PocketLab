@@ -252,6 +252,9 @@ export class UI {
         <dt>Depth</dt><dd data-readout="depth">${body.position.z.toFixed(1)}</dd>
         <dt>W-Axis</dt><dd data-readout="w">${(body.w ?? 0).toFixed(1)}</dd>
         <dt>Time</dt><dd data-readout="dilation">${(body.timeDilation ?? 1).toFixed(2)}</dd>
+        <dt>Class</dt><dd>${body.category}</dd>
+        <dt>Material</dt><dd>${body.materialProfile ?? 'unknown'}</dd>
+        <dt>Emergent</dt><dd>${this.emergentStatus(body)}</dd>
       </dl>
       <h3>Physical</h3>
       <div class="inspector-controls">
@@ -346,6 +349,16 @@ export class UI {
       mystery: 'lander'
     };
     return hints[type] ?? 'asset';
+  }
+
+  emergentStatus(body) {
+    const bits = [];
+    if (body.atmosphere) bits.push(`atmosphere ${(body.atmosphere * 100).toFixed(0)}%`);
+    if (body.satelliteCount) bits.push(`${body.satelliteCount} capture${body.satelliteCount === 1 ? '' : 's'}`);
+    if (body.accretion && body.accretion > 0.5) bits.push(`accretion ${body.accretion.toFixed(1)}`);
+    if (body.phaseShift && body.phaseShift > 0.05) bits.push(`phase ${(body.phaseShift * 100).toFixed(0)}%`);
+    if (body.attachedTo) bits.push('attached');
+    return bits.length ? bits.join(', ') : 'none yet';
   }
 
   assetGroup(asset) {
