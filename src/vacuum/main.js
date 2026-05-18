@@ -297,6 +297,47 @@ function consumePhysicsEvents() {
       ui.status.textContent = `${event.targetType ?? 'object'} beam-scarred`;
       continue;
     }
+    if (event.type === 'ionize-gas') {
+      const target = state.bodies.find((item) => item.id === event.targetId);
+      const severity = event.severity ?? 0.5;
+      if (target) {
+        target.label = target.label.includes('Ionized') ? target.label : `Ionized ${target.label}`;
+        target.glow = Math.max(target.glow ?? 1, 1.75);
+        target.fieldStress = Math.max(target.fieldStress ?? 0, 1.1);
+      }
+      seedFineDust(event.position, Math.floor(42 + severity * 58), 0x72fff0, 112 + severity * 72, 0.026, true, 'Ion Mist');
+      particles.burst(event.position, 0x72fff0, Math.floor(76 + severity * 56), 140 + severity * 70, 'radiation');
+      nebula.burst(event.position, { count: Math.floor(92 + severity * 70), colorA: '#72fff0', colorB: '#ff4ed6', speed: 118 + severity * 60, life: 1.85, radius: [7, 24], drift: 54 });
+      ui.status.textContent = 'light beam ionized gas into plasma';
+      continue;
+    }
+    if (event.type === 'solar-flare') {
+      const star = state.bodies.find((item) => item.id === event.starId);
+      if (star) {
+        star.glow = Math.max(star.glow ?? 1, 1.9);
+        star.shockwave = 1;
+      }
+      seedFineDust(event.position, 72, 0xffd36b, 165, 0.035, true, 'Solar Flare Dust');
+      particles.burst(event.position, 0xffd36b, 110, 195, 'radiation');
+      particles.burst(event.position, 0xff3c72, 62, 230, 'laser');
+      nebula.burst(event.position, { count: 138, colorA: '#ffd36b', colorB: '#ff3c72', speed: 170, life: 1.45, radius: [8, 26], drift: 62 });
+      state.cameraShake = Math.max(state.cameraShake, 2.8);
+      ui.status.textContent = 'light beam kicked a solar flare';
+      continue;
+    }
+    if (event.type === 'beam-prism') {
+      const target = state.bodies.find((item) => item.id === event.targetId);
+      if (target) target.glow = Math.max(target.glow ?? 1, 1.55);
+      const dir = event.direction ?? randomDirection();
+      for (let i = 0; i < 3; i++) {
+        const side = randomDirection().lerp(dir, 0.45).normalize();
+        seedFineDust(event.position.clone().addScaledVector(side, i * 3), 12, [0xff3c72, 0x72fff0, 0xffd36b][i], 180, 0.018, true, 'Photon Split');
+      }
+      particles.burst(event.position, 0xffffff, 48, 180, 'laser');
+      nebula.burst(event.position, { count: 56, colorA: '#ffffff', colorB: '#72fff0', speed: 145, life: 1.05, radius: [3, 13], drift: 38 });
+      ui.status.textContent = `${event.targetType ?? 'field'} split the light beam`;
+      continue;
+    }
     if (event.type === 'atmosphere-accretion') {
       const planet = state.bodies.find((item) => item.id === event.planetId);
       const gas = state.bodies.find((item) => item.id === event.gasId);

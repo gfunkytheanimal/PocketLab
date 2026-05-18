@@ -712,6 +712,52 @@ export class PhysicsEngine {
       return true;
     }
 
+    if (profiles.includes('energy') && this.readyForReaction(a, b)) {
+      const energy = a.materialProfile === 'energy' ? a : b;
+      const target = energy === a ? b : a;
+      if (target.materialProfile === 'gas') {
+        target.heat = 1;
+        target.fieldStress = Math.max(target.fieldStress ?? 0, 1.15);
+        target.charge = Math.max(Math.abs(target.charge ?? 0), 0.55);
+        energy.velocity.reflect(normal).multiplyScalar(0.55);
+        this.cooldown(energy, target, 0.7);
+        this.state.events?.push({
+          type: 'ionize-gas',
+          position: energy.position.clone().lerp(target.position, 0.5),
+          targetId: target.id,
+          severity: Math.min(1, target.radius / 24 + 0.25)
+        });
+        return false;
+      }
+      if (target.materialProfile === 'plasma') {
+        target.shockwave = 1;
+        target.heat = 1;
+        energy.velocity.addScaledVector(normal.clone().multiplyScalar(energy === b ? 1 : -1), 84);
+        this.cooldown(energy, target, 0.5);
+        this.state.events?.push({
+          type: 'solar-flare',
+          position: energy.position.clone().lerp(target.position, 0.5),
+          starId: target.id,
+          severity: 0.85
+        });
+        return false;
+      }
+      if (['field', 'field-metal'].includes(target.materialProfile)) {
+        target.fieldStress = Math.max(target.fieldStress ?? 0, 1.25);
+        energy.fieldStress = Math.max(energy.fieldStress ?? 0, 1);
+        energy.velocity.reflect(normal).multiplyScalar(1.08);
+        this.cooldown(energy, target, 0.55);
+        this.state.events?.push({
+          type: 'beam-prism',
+          position: energy.position.clone().lerp(target.position, 0.5),
+          targetId: target.id,
+          targetType: target.type,
+          direction: energy.velocity.clone().normalize()
+        });
+        return false;
+      }
+    }
+
     if (profiles.includes('energy') && profiles.some((profile) => ['metal', 'rock', 'ice'].includes(profile)) && this.readyForReaction(a, b)) {
       const energy = a.materialProfile === 'energy' ? a : b;
       const target = energy === a ? b : a;
