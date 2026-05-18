@@ -1577,6 +1577,10 @@ function orbitKick(body) {
 }
 
 function seedDustRing(body) {
+  if (body.type === 'star') {
+    seedSolarWind(body);
+    return;
+  }
   const ringCount = body.type === 'blackhole' ? 72 : 44;
   const radius = body.radius * (body.type === 'blackhole' ? 4.6 : 2.9);
   for (let i = 0; i < ringCount; i++) {
@@ -1599,6 +1603,35 @@ function seedDustRing(body) {
   body.shockwave = Math.max(body.shockwave ?? 0, 0.65);
   particles.burst(body.position, body.type === 'blackhole' ? 0xff9d42 : 0x87f7ff, 48, 85, 'spark');
   ui.status.textContent = `${body.label} dust belt seeded`;
+}
+
+function seedSolarWind(body) {
+  const count = 66;
+  for (let i = 0; i < count; i++) {
+    const dir = randomDirection();
+    const pos = body.position.clone().addScaledVector(dir, body.radius * (1.15 + Math.random() * 0.65));
+    const dust = factory.create('dust', pos);
+    dust.label = 'Solar Wind';
+    dust.mass = 0.018 + Math.random() * 0.04;
+    dust.radius = 0.48 + Math.random() * 0.75;
+    dust.baseRadius = 2;
+    dust.visualScale = dust.radius / dust.baseRadius;
+    dust.isDust = true;
+    dust.heat = 1;
+    dust.showTrail = false;
+    tintBody(dust, jitterColor(Math.random() > 0.5 ? 0xffd36b : 0xff7442, 0.12));
+    const swirl = new THREE.Vector3(-dir.y, dir.x, dir.z * 0.22).normalize();
+    dust.velocity.copy(body.velocity)
+      .addScaledVector(dir, 52 + Math.random() * 95)
+      .addScaledVector(swirl, 18 + Math.random() * 34);
+    dust.angularVelocity = (Math.random() - 0.5) * 2.4;
+    state.bodies.push(dust);
+  }
+  body.shockwave = Math.max(body.shockwave ?? 0, 0.8);
+  body.fieldStress = Math.max(body.fieldStress ?? 0, 0.5);
+  particles.burst(body.position, 0xffd36b, 86, 125, 'radiation');
+  nebula.burst(body.position, { count: 90, colorA: '#ffb35d', colorB: '#fff4a8', speed: 118, life: 1.4, radius: [8, 30], drift: 52 });
+  ui.status.textContent = `${body.label} solar wind seeded`;
 }
 
 function seedFineDust(position, count, color, speed, mass = 0.06, hot = false, label = null) {
