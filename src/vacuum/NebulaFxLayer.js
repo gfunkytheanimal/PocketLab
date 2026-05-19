@@ -39,6 +39,7 @@ export class NebulaFxLayer {
     this.renderer._body.material.blending = THREE.AdditiveBlending;
     this.system.addRenderer(this.renderer);
     this.emitters = [];
+    this.maxEmitters = 18;
   }
 
   burst(position, options = {}) {
@@ -54,8 +55,11 @@ export class NebulaFxLayer {
       direction = new THREE.Vector3(0, 1, 0),
       spread = 180
     } = options;
+    const safeCount = this.safeBurstCount(count);
+    if (safeCount <= 0) return;
+    while (this.emitters.length >= this.maxEmitters) this.disposeEmitter(this.emitters.shift());
     const emitter = new Emitter()
-      .setRate(new Rate(new Span(count, count), new Span(0.001, 0.002)))
+      .setRate(new Rate(new Span(safeCount, safeCount), new Span(0.001, 0.002)))
       .setInitializers([
         new Position(new PointZone(position.x, position.y, position.z)),
         new Mass(1),
@@ -72,6 +76,7 @@ export class NebulaFxLayer {
     emitter.emit(1, life);
     this.system.addEmitter(emitter);
     this.emitters.push({ emitter, age: 0, life: life + 1.2 });
+    this.state.nebulaEmitterCount = this.emitters.length;
   }
 
   stream(position, direction, options = {}) {
@@ -94,27 +99,40 @@ export class NebulaFxLayer {
       const entry = this.emitters[i];
       entry.age += dt;
       if (entry.age < entry.life) continue;
-      entry.emitter.stopEmit();
-      entry.emitter.removeAllParticles();
-      this.system.removeEmitter(entry.emitter);
+      this.disposeEmitter(entry);
       this.emitters.splice(i, 1);
     }
+    this.state.nebulaEmitterCount = this.emitters.length;
   }
 
   clear() {
     for (const entry of this.emitters) {
-      entry.emitter.stopEmit();
-      entry.emitter.removeAllParticles();
+      this.disposeEmitter(entry);
     }
     this.system.update(0.1);
-    for (const entry of this.emitters) this.system.removeEmitter(entry.emitter);
     this.emitters = [];
+    this.state.nebulaEmitterCount = 0;
     while (this.group.children.length) {
       const child = this.group.children[0];
       this.group.remove(child);
       child.material?.dispose?.();
       child.geometry?.dispose?.();
     }
+  }
+
+  disposeEmitter(entry) {
+    if (!entry?.emitter) return;
+    entry.emitter.stopEmit();
+    entry.emitter.removeAllParticles();
+    this.system.removeEmitter(entry.emitter);
+  }
+
+  safeBurstCount(count) {
+    const bodies = this.state.bodies?.length ?? 0;
+    const dust = this.state.bodies?.filter((body) => body.isDust).length ?? 0;
+    const pressure = bodies + dust * 0.85 + this.emitters.length * 7;
+    const scale = pressure > 180 ? 0.12 : pressure > 120 ? 0.24 : pressure > 75 ? 0.45 : 0.82;
+    return Math.min(Math.max(0, Math.round(count * scale)), pressure > 120 ? 32 : 72);
   }
 }
 

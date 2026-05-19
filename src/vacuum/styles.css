@@ -284,6 +284,10 @@ body,
   text-transform: uppercase;
 }
 
+#hud #scanner-readout.hidden {
+  display: none;
+}
+
 #toolbar {
   position: static;
   z-index: auto;

@@ -28,6 +28,16 @@ export class Interaction {
     });
     canvas.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
+      if (this.state.toolMode === 'paint') {
+        if (this.controls) this.controls.enabled = false;
+        const world = this.screenToPaintWorld(event.clientX, event.clientY);
+        this.callbacks.applyToolAt(world, 'paint');
+        this.painting = true;
+        this.dragged = null;
+        this.lastPaintAt = performance.now();
+        this.callbacks.selectionChanged();
+        return;
+      }
       const hit = this.pick(event.clientX, event.clientY);
       if (hit) {
         if (this.controls) this.controls.enabled = false;
@@ -40,6 +50,7 @@ export class Interaction {
           ? this.screenToPaintWorld(event.clientX, event.clientY)
           : this.screenToWorld(event.clientX, event.clientY, this.state.selected?.position.z ?? 0);
         if (this.state.toolMode && this.state.toolMode !== 'select') {
+          if (this.controls) this.controls.enabled = false;
           this.callbacks.applyToolAt(world, this.state.toolMode);
           if (this.state.toolMode === 'paint') {
             this.painting = true;
@@ -120,10 +131,9 @@ export class Interaction {
   screenToPaintWorld(x, y) {
     this.setPointer(x, y);
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const normal = new THREE.Vector3();
-    this.camera.getWorldDirection(normal);
-    const anchor = this.state.selected?.position ?? this.controls?.target ?? new THREE.Vector3();
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, anchor);
+    const planeZ = this.state.paintPlaneZ ?? this.state.selected?.position.z ?? 0;
+    const anchor = new THREE.Vector3(0, 0, planeZ);
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -planeZ);
     const world = new THREE.Vector3();
     if (!this.raycaster.ray.intersectPlane(plane, world)) {
       return anchor.clone();

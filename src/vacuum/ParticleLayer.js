@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const MAX_PARTICLES = 1800;
+const MAX_PARTICLES = 1050;
 
 export class ParticleLayer {
   constructor(scene, state) {
@@ -15,6 +15,7 @@ export class ParticleLayer {
     this.age = new Float32Array(MAX_PARTICLES);
     this.kind = new Array(MAX_PARTICLES).fill('spark');
     this.cursor = 0;
+    this.frameEmitBudget = 90;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
@@ -70,7 +71,8 @@ export class ParticleLayer {
 
   burst(position, color = 0x7df7ff, count = 28, speed = 85, kind = 'spark') {
     const c = new THREE.Color(color);
-    for (let i = 0; i < count; i++) {
+    const safeCount = this.safeBurstCount(count);
+    for (let i = 0; i < safeCount; i++) {
       const idx = this.cursor;
       this.cursor = (this.cursor + 1) % MAX_PARTICLES;
       const dir = randomDirection().multiplyScalar(speed * (0.28 + Math.random() * 0.9));
@@ -93,6 +95,7 @@ export class ParticleLayer {
   update(dt) {
     this.points.visible = this.state.showParticles;
     if (!this.state.showParticles) return;
+    this.frameEmitBudget = this.frameBudget();
     this.emitBodyParticles(dt);
     for (let i = 0; i < MAX_PARTICLES; i++) {
       if (this.life[i] <= 0) continue;
@@ -176,6 +179,8 @@ export class ParticleLayer {
   }
 
   emitOne(position, direction, color, speed, kind) {
+    if (this.frameEmitBudget <= 0) return;
+    this.frameEmitBudget--;
     const idx = this.cursor;
     this.cursor = (this.cursor + 1) % MAX_PARTICLES;
     const c = new THREE.Color(color);
@@ -208,6 +213,22 @@ export class ParticleLayer {
     this.points.geometry.attributes.size.needsUpdate = true;
     this.points.geometry.attributes.alpha.needsUpdate = true;
     this.points.geometry.attributes.mode.needsUpdate = true;
+  }
+
+  frameBudget() {
+    const bodies = this.state.bodies?.length ?? 0;
+    const dust = this.state.bodies?.filter((body) => body.isDust).length ?? 0;
+    const emitters = this.state.nebulaEmitterCount ?? 0;
+    const pressure = bodies + dust * 0.65 + emitters * 4;
+    return Math.max(16, Math.floor(105 - pressure * 0.65));
+  }
+
+  safeBurstCount(count) {
+    const bodies = this.state.bodies?.length ?? 0;
+    const dust = this.state.bodies?.filter((body) => body.isDust).length ?? 0;
+    const pressure = bodies + dust * 0.7;
+    const scale = pressure > 170 ? 0.18 : pressure > 115 ? 0.34 : pressure > 70 ? 0.58 : 1;
+    return Math.max(0, Math.min(Math.round(count * scale), pressure > 115 ? 42 : 88));
   }
 }
 

@@ -94,12 +94,12 @@ const state = {
   maxAcceleration: 850,
   maxVelocity: 520,
   spacetimeScale: 1,
-  wProjection: 0.65,
+  wProjection: 0,
   ragdollScale: 1.35,
   boundsSize: 820,
   depthSpread: 140,
   cameraMode: 'iso',
-  maxDust: 150,
+  maxDust: 96,
   renderScale: 1.7,
   bloomStrength: 0.62,
   bloomRadius: 0.72,
@@ -109,6 +109,11 @@ const state = {
   trailLength: 240
 };
 window.__VACUUM_STATE__ = state;
+
+const LABEL_TAGS = new Set([
+  'Molten', 'Charged', 'Scarred', 'Ionized', 'Atmospheric', 'Icy', 'Oceanic',
+  'Cratered', 'Scorched', 'Captured', 'Ringed', 'Explored', 'Wrecked', 'Living'
+]);
 
 const factory = new ObjectFactory(scene, state);
 const physics = new PhysicsEngine(state);
@@ -191,6 +196,7 @@ function animate(now) {
     consumePhysicsEvents();
     cleanupRemovedBodies();
     for (const body of state.bodies) {
+      compactBodyLabel(body);
       factory.updateTrail(body);
       updateBodyVisual(body, dt);
     }
@@ -225,6 +231,32 @@ function cleanupRemovedBodies() {
     if (state.selected === body) state.selected = null;
   }
   if (removed.length) state.bodies = state.bodies.filter((body) => !body.toRemove);
+}
+
+function compactBodyLabel(body) {
+  if (!body?.label) return;
+  body.baseLabel ??= stripLabelTags(body.label);
+  const words = body.label.split(/\s+/).filter(Boolean);
+  const tags = [];
+  const baseWords = [];
+  for (const word of words) {
+    if (LABEL_TAGS.has(word)) {
+      if (!tags.includes(word)) tags.push(word);
+    } else {
+      baseWords.push(word);
+    }
+  }
+  const base = body.baseLabel || baseWords.join(' ') || body.label;
+  const compactTags = tags.slice(-2);
+  body.label = [...compactTags, base].join(' ').trim();
+}
+
+function stripLabelTags(label) {
+  return String(label)
+    .split(/\s+/)
+    .filter((word) => !LABEL_TAGS.has(word))
+    .join(' ')
+    .trim();
 }
 
 function consumePhysicsEvents() {
@@ -960,7 +992,10 @@ function spawnSystemKit(type, origin) {
   const add = (bodyType, offset, velocity = new THREE.Vector3(), label = null) => {
     const body = factory.create(bodyType, origin.clone().add(offset));
     body.velocity.copy(velocity);
-    if (label) body.label = label;
+    if (label) {
+      body.label = label;
+      body.baseLabel = label;
+    }
     body.trail.length = 0;
     body.showTrail = !['dust', 'debris'].includes(body.category);
     state.bodies.push(body);
@@ -1396,7 +1431,7 @@ function updateBodyVisual(body, dt) {
   const scale = 1 + body.fieldStress * 0.12 + body.shockwave * 0.4;
   const phaseScale = 1 + (body.phaseShift ?? 0) * 0.12;
   body.group.scale.setScalar((body.visualScale ?? 1) * phaseScale);
-  body.group.position.copy(body.position).add(new THREE.Vector3(0, 0, (body.w ?? 0) * (state.wProjection ?? 0.65)));
+  body.group.position.copy(body.position);
   body.mesh.scale.setScalar(scale);
   if (body.selectionShell) {
     body.selectionShell.visible = state.selected === body && (state.showBounds || state.showTopology);
@@ -1952,19 +1987,65 @@ function nearestBody(position, predicate) {
 }
 
 function orbitKick(body) {
-  const anchors = state.bodies
-    .filter((candidate) => candidate !== body && candidate.mass > body.mass && candidate.mass > 6)
-    .sort((a, b) => a.position.distanceToSquared(body.position) - b.position.distanceToSquared(body.position));
-  const anchor = anchors[0];
-  if (!anchor) return;
-  const radial = body.position.clone().sub(anchor.position);
-  const distance = Math.max(radial.length(), anchor.radius + body.radius + 8);
-  radial.normalize();
-  const tangent = new THREE.Vector3(-radial.y, radial.x, radial.z * 0.15).normalize();
-  const speed = Math.sqrt((state.gravityScale * anchor.mass) / distance) * 20;
-  body.velocity.copy(anchor.velocity).addScaledVector(tangent, speed);
-  body.trail.length = 0;
-  ui.status.textContent = `${body.label} kicked into orbit`;
+  const anchor = nearestOrbitAnchor(body);
+  if (!anchor) {
+    ui.status.textContent = 'no massive neighbor available for orbit lock';
+    return false;
+  }
+  lockOrbit(body, anchor);
+  return true;
+}
+
+function nearestOrbitAnchor(body) {
+  return state.bodies
+    .filter((candidate) => candidate !== body && !candidate.isDust && candidate.mass > Math.max(6, body.mass * 1.65))
+    .sort((a, b) => a.position.distanceToSquared(body.position) - b.position.distanceToSquared(body.position))[0] ?? null;
+}
+
+function applyOrbitCoupling(origin, radius, strengthScale = 1) {
+  let satellite = state.selected && state.bodies.includes(state.selected) && state.selected.category !== 'singularity'
+    ? state.selected
+    : null;
+  if (!satellite || satellite.position.distanceTo(origin) > radius) {
+    satellite = nearestBody(origin, (body) => body.category !== 'singularity' && !body.isDust && body.position.distanceTo(origin) <= radius);
+  }
+  if (!satellite) {
+    ui.status.textContent = 'orbit lock found no nearby satellite';
+    return false;
+  }
+  const anchor = nearestOrbitAnchor(satellite);
+  if (!anchor) {
+    ui.status.textContent = `${satellite.label} needs a heavier neighbor to orbit`;
+    return false;
+  }
+  lockOrbit(satellite, anchor, strengthScale);
+  state.selected = satellite;
+  ui.updateInspector();
+  return true;
+}
+
+function lockOrbit(satellite, anchor, strengthScale = 1) {
+  const radial = satellite.position.clone().sub(anchor.position);
+  let distance = radial.length();
+  const safeDistance = anchor.radius + satellite.radius + Math.max(28, anchor.radius * 0.72);
+  if (distance < safeDistance || distance < 0.001) {
+    radial.copy(randomDirection());
+    satellite.position.copy(anchor.position).addScaledVector(radial, safeDistance);
+    satellite.group.position.copy(satellite.position);
+    distance = safeDistance;
+  } else {
+    radial.normalize();
+  }
+  const pole = Math.abs(radial.z) < 0.86 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
+  const tangent = new THREE.Vector3().crossVectors(pole, radial).normalize();
+  const speed = Math.sqrt(Math.max(0.01, state.gravityScale * anchor.mass / distance)) * THREE.MathUtils.clamp(8.8 * strengthScale, 5.5, 12.5);
+  satellite.velocity.copy(anchor.velocity).addScaledVector(tangent, speed);
+  satellite.trail.length = 0;
+  satellite.orbitAnchorId = anchor.id;
+  satellite.captureCooldown = 1.2;
+  satellite.fieldStress = Math.max(satellite.fieldStress ?? 0, 0.18);
+  anchor.satelliteCount = Math.max(anchor.satelliteCount ?? 0, 1);
+  ui.status.textContent = `${satellite.label} locked around ${anchor.label}`;
 }
 
 function seedDustRing(body) {
@@ -1972,7 +2053,8 @@ function seedDustRing(body) {
     seedSolarWind(body);
     return;
   }
-  const ringCount = body.type === 'blackhole' ? 72 : 22;
+  const liveDust = state.bodies.filter((item) => item.isDust).length;
+  const ringCount = Math.max(0, Math.min(body.type === 'blackhole' ? 42 : 16, state.maxDust - liveDust));
   const radius = body.radius * (body.type === 'blackhole' ? 4.6 : 3.35);
   for (let i = 0; i < ringCount; i++) {
     const angle = (i / ringCount) * Math.PI * 2;
@@ -1998,7 +2080,8 @@ function seedDustRing(body) {
 }
 
 function seedSolarWind(body) {
-  const count = 24;
+  const liveDust = state.bodies.filter((item) => item.isDust).length;
+  const count = Math.max(0, Math.min(14, state.maxDust - liveDust));
   for (let i = 0; i < count; i++) {
     const dir = randomDirection();
     const pos = body.position.clone().addScaledVector(dir, body.radius * (1.15 + Math.random() * 0.65));
@@ -2386,6 +2469,7 @@ function serializeBody(body) {
   return {
     type: body.type,
     label: body.label,
+    baseLabel: body.baseLabel,
     mass: body.mass,
     radius: body.radius,
     baseRadius: body.baseRadius,
@@ -2421,6 +2505,7 @@ function serializeBody(body) {
 
 function hydrateBody(body, saved) {
   body.label = saved.label ?? body.label;
+  body.baseLabel = saved.baseLabel ?? stripLabelTags(body.label);
   body.mass = saved.mass ?? body.mass;
   body.radius = saved.radius ?? body.radius;
   body.baseRadius = saved.baseRadius ?? body.baseRadius;
@@ -2464,6 +2549,10 @@ function clearFossils() {
 
 function setToolMode(tool) {
   state.toolMode = tool;
+  if (tool === 'paint') {
+    state.paintPlaneZ = state.selected?.position.z ?? 0;
+    setPaintCamera();
+  }
   ui.status.textContent = tool === 'select' ? 'selection tool active' : `${tool} power armed`;
   ui.syncToolbar();
 }
@@ -2493,6 +2582,11 @@ function applyToolAt(origin, tool) {
   const baseRadius = tool === 'orbit' ? 260 : ['fold', 'unfold'].includes(tool) ? 230 : 185;
   const radius = Math.max(20, state.powerRadius ?? baseRadius);
   const strengthScale = state.powerStrength ?? 1;
+  if (tool === 'orbit') {
+    applyOrbitCoupling(origin, radius, strengthScale);
+    particles.burst(origin, 0x72fff0, 16, 72, 'spark');
+    return;
+  }
   let affected = 0;
   for (const body of state.bodies) {
     if (body.category === 'singularity' && tool !== 'heat') continue;
@@ -2518,10 +2612,6 @@ function applyToolAt(origin, tool) {
       body.angularVelocity *= Math.max(0, 1 - falloff * 0.9 * strengthScale);
       body.frozen = falloff > 0.78 ? !body.frozen : body.frozen;
     }
-    if (tool === 'orbit') {
-      const tangent = new THREE.Vector3(-dir.y, dir.x, dir.z * 0.25).normalize();
-      body.velocity.addScaledVector(tangent, 95 * falloff * massFactor * strengthScale);
-    }
     if (tool === 'fold') {
       body.wVelocity += 72 * falloff * massFactor * strengthScale;
       body.fieldStress = Math.max(body.fieldStress ?? 0, falloff * 1.1);
@@ -2536,7 +2626,7 @@ function applyToolAt(origin, tool) {
     affected++;
   }
   const color = tool === 'heat' ? 0xff9d42 : tool === 'freeze' ? 0x9fefff : tool === 'pull' ? 0xc35cff : ['fold', 'unfold'].includes(tool) ? 0x72eaff : 0x72fff0;
-  particles.burst(origin, color, Math.round(44 * Math.min(2, strengthScale)), (tool === 'orbit' ? 130 : 105) * strengthScale, tool === 'heat' ? 'radiation' : 'spark');
+  particles.burst(origin, color, Math.round(44 * Math.min(2, strengthScale)), 105 * strengthScale, tool === 'heat' ? 'radiation' : 'spark');
   nebula.burst(origin, { count: Math.round(62 * Math.min(2, strengthScale)), colorA: `#${color.toString(16).padStart(6, '0')}`, colorB: '#ffffff', speed: 115 * strengthScale, life: 0.9, radius: [3, 14], drift: 36 });
   state.cameraShake = Math.max(state.cameraShake, (tool === 'heat' ? 1.8 : 1.0) * Math.min(2, strengthScale));
   ui.status.textContent = `${tool} affected ${affected} objects`;
@@ -2583,7 +2673,7 @@ function paintStarField(origin) {
   }
   particles.burst(origin, 0x9fefff, 26, 34, 'spark');
   nebula.burst(origin, { count: Math.round(34 * brushStrength), colorA: '#9fefff', colorB: '#ffffff', speed: 32 * brushStrength, life: 1.8, radius: [3 * brushSize, 10 * brushSize], drift: 16 * brushSize });
-  ui.status.textContent = `painted stars plus ${count} live motes`;
+  ui.status.textContent = count ? `painted stars plus ${count} live motes` : 'painted starfield backdrop (dust cap full)';
 }
 
 function paintGas(origin) {
@@ -2611,7 +2701,7 @@ function paintGas(origin) {
   }
   nebula.burst(origin, { count: Math.round(86 * brushStrength), colorA: '#7dffda', colorB: '#3145ff', speed: 30 * brushStrength, life: 2.6, radius: [8 * brushSize, 28 * brushSize], drift: 22 * brushSize });
   particles.burst(origin, 0x7dffda, 18, 22, 'spark');
-  ui.status.textContent = `painted gas plus ${count} live wisps`;
+  ui.status.textContent = count ? `painted gas plus ${count} live wisps` : 'painted gas backdrop (dust cap full)';
 }
 
 function paintCharge(origin) {
@@ -2638,7 +2728,7 @@ function paintCharge(origin) {
   }
   particles.burst(origin, 0xff4fd8, 30, 52, 'spark');
   nebula.burst(origin, { count: Math.round(48 * brushStrength), colorA: '#ff4fd8', colorB: '#50ffe7', speed: 52 * brushStrength, life: 1.3, radius: [3 * brushSize, 11 * brushSize], drift: 28 * brushSize });
-  ui.status.textContent = `painted charge plus ${count} live motes`;
+  ui.status.textContent = count ? `painted charge plus ${count} live motes` : 'painted charge backdrop (dust cap full)';
 }
 
 function paintHeat(origin) {
@@ -2673,6 +2763,15 @@ function setDevSetting(prop, value) {
   if (prop === 'bloomThreshold') bloomPass.threshold = value;
   if (prop === 'maxDust') state.maxDust = value;
   ui.status.textContent = `${prop} ${Number(value).toFixed(2)}`;
+}
+
+function setPaintCamera() {
+  const center = state.selected?.position ?? systemCenter();
+  controls.minDistance = 20;
+  controls.target.copy(center);
+  camera.position.copy(center).add(new THREE.Vector3(0, 0, 1250));
+  state.cameraMode = 'paint';
+  controls.update();
 }
 
 function setCameraView(view) {

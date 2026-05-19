@@ -99,21 +99,8 @@ export class SpacetimeVolumeSystem {
     if (falloff > 0.42) {
       body.velocity.multiplyScalar(Math.max(0.91, 1 - falloff * 0.012 * (this.state.captureScale ?? 1)));
     }
-    body.wVelocity += (falloff * 12 - body.w * falloff * 0.16) * dt;
-    body.heat = Math.min(1, (body.heat ?? 0) + falloff * 0.025);
-
-    if (dist < source.radius * 4.2 && Math.abs(body.w) > 18 && (body.spacetimeCooldown ?? 0) <= 0) {
-      body.spacetimeCooldown = 1.2;
-      this.state.events?.push({
-        type: 'spacetime-shear',
-        position: body.position.clone(),
-        sourceId: source.id,
-        bodyId: body.id,
-        bodyType: body.type,
-        bodyLabel: body.label,
-        w: body.w
-      });
-    }
+    body.wVelocity += (-body.w * falloff * 0.08) * dt;
+    body.heat = Math.min(1, (body.heat ?? 0) + falloff * 0.012);
   }
 
   applyWormholeVolume(source, body, dir, dist, reach, falloff, dt) {

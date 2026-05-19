@@ -6,10 +6,10 @@ const POWER_HELP = {
   pull: 'Pull nearby objects toward the click point.',
   heat: 'Add heat, glow, shockwaves, and burn-up reactions.',
   freeze: 'Damp motion nearby; close clicks toggle frozen objects.',
-  orbit: 'Add sideways velocity so objects start curling into orbits.',
+  orbit: 'Lock the selected or nearest object into a safer orbit around its nearest heavier neighbor.',
   paint: 'Paint the active Brush mode into the vacuum. Brush motes are playable bodies unless the Heat brush is selected.',
-  fold: 'Push objects into the hidden W-axis so spacetime effects phase them out of normal space.',
-  unfold: 'Pull objects back down the hidden W-axis toward ordinary space.'
+  fold: 'Experimental topology pressure. Kept subtle so normal gravity stays readable.',
+  unfold: 'Experimental topology release. Kept subtle so normal gravity stays readable.'
 };
 
 const INSPECTOR_HELP = {
@@ -20,8 +20,8 @@ const INSPECTOR_HELP = {
   vx: 'Velocity along X.',
   vy: 'Velocity along Y.',
   vz: 'Velocity along Z.',
-  w: 'Hidden fourth-coordinate offset. Only spacetime volumes and Fold/Unfold care about this.',
-  wVelocity: 'Flow speed through the hidden W-axis.',
+  w: 'Experimental topology offset. Visual projection is disabled so collisions stay local.',
+  wVelocity: 'Experimental topology flow speed.',
   charge: 'Electromagnetic-ish value for magnets, UFOs, and charged dust.',
   heat: 'Thermal stress. Makes many assets glow, burn, vaporize, or react.',
   glow: 'Extra emissive boost. Works on procedural and imported materials where possible.',
@@ -314,7 +314,7 @@ export class UI {
           <label>W Flow <input data-prop="wVelocity" type="range" min="-120" max="120" step="1" value="${body.wVelocity ?? 0}"></label>
         </div>
       </details>
-      <details class="object-control-group">
+      <details class="object-control-group" ${body.type === 'comet' ? 'open' : ''}>
         <summary>Energy & Visuals</summary>
         <div class="inspector-controls">
           <label>Charge <input data-prop="charge" type="range" min="-4" max="4" step="0.05" value="${body.charge ?? 0}"></label>
@@ -335,7 +335,7 @@ export class UI {
           <button data-action="mass-down">Mass -</button>
           <button data-action="velocity-down">Slow</button>
           <button data-action="velocity-up">Boost</button>
-          <button data-action="orbit-kick">Orbit</button>
+          <button data-action="orbit-kick">Lock Orbit</button>
           <button data-action="dust-ring">Dust Belt</button>
           <button data-action="tractor">Tractor</button>
           <button data-action="goo-burst">Goo</button>

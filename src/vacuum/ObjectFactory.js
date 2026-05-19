@@ -82,6 +82,7 @@ export class ObjectFactory {
       type,
       category: asset.category,
       label: asset.label,
+      baseLabel: asset.label,
       materialProfile: MATERIAL_PROFILES[type] ?? asset.category,
       mass: asset.mass,
       radius: asset.radius,
