@@ -242,7 +242,7 @@ body,
   background: rgba(3, 10, 18, 0.74);
   box-shadow: 0 0 26px rgba(96, 234, 255, 0.16);
   backdrop-filter: blur(16px);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 #selection-badge strong,
@@ -259,6 +259,19 @@ body,
   color: rgba(224, 247, 255, 0.64);
   font-size: 11px;
   text-transform: uppercase;
+}
+
+.selection-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.selection-tools button {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 11px;
 }
 
 #hud strong,

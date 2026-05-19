@@ -48,6 +48,7 @@ export class PhysicsEngine {
 
     this.applyPortals();
     this.spacetime.apply(dt);
+    this.applyOrbitLocks(dt);
 
     for (const body of bodies) {
       if (this.updateAttachment(body)) continue;
@@ -67,6 +68,35 @@ export class PhysicsEngine {
     }
 
     this.collisions();
+  }
+
+  applyOrbitLocks(dt) {
+    const bodies = this.state.bodies;
+    for (const body of bodies) {
+      if (!body.orbitAnchorId || body.frozen || body.attachedTo) continue;
+      const anchor = bodies.find((candidate) => candidate.id === body.orbitAnchorId && !candidate.toRemove);
+      if (!anchor) {
+        body.orbitAnchorId = null;
+        continue;
+      }
+      this.delta.subVectors(body.position, anchor.position);
+      let distance = this.delta.length();
+      const safeDistance = anchor.radius + body.radius + Math.max(28, anchor.radius * 0.72);
+      if (distance < safeDistance || distance < 0.001) {
+        this.delta.set(1, 0, 0);
+        distance = safeDistance;
+        body.position.copy(anchor.position).addScaledVector(this.delta, safeDistance);
+      } else {
+        this.delta.multiplyScalar(1 / distance);
+      }
+      const pole = Math.abs(this.delta.z) < 0.86 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
+      this.normal.crossVectors(pole, this.delta).normalize();
+      const speed = Math.sqrt(Math.max(0.01, (this.state.gravityScale ?? 34) * anchor.mass / distance)) * 8.8;
+      const targetVelocity = anchor.velocity.clone().addScaledVector(this.normal, speed);
+      body.velocity.lerp(targetVelocity, Math.min(1, dt * 3.8));
+      const radialVelocity = this.delta.dot(body.velocity.clone().sub(anchor.velocity));
+      body.velocity.addScaledVector(this.delta, -radialVelocity * Math.min(1, dt * 5.5));
+    }
   }
 
   applyBounds(body) {

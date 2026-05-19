@@ -238,7 +238,22 @@ export class UI {
       return;
     }
     this.selectionBadge.classList.remove('hidden');
-    this.selectionBadge.innerHTML = `<strong>${body.label}</strong><span>${body.category ?? body.type} selected</span>`;
+    this.selectionBadge.innerHTML = `
+      <strong>${body.label}</strong>
+      <span>${body.orbitAnchorId ? `orbit locked to ${body.orbitAnchorLabel ?? 'anchor'}` : `${body.category ?? body.type} selected`}</span>
+      <div class="selection-tools">
+        <button data-action="orbit-kick" title="Lock this object into orbit around its nearest heavier neighbor.">Lock Orbit</button>
+        ${body.orbitAnchorId ? '<button data-action="unlock-orbit" title="Release the persistent orbit lock.">Unlock</button>' : ''}
+        <button data-action="velocity-down" title="Dampen this object immediately.">Slow</button>
+        <button data-action="stop" title="Zero velocity and spin.">Stop</button>
+      </div>
+    `;
+    this.selectionBadge.querySelectorAll('button').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.callbacks.inspectAction(button.dataset.action);
+      });
+    });
     if (this.inspectedId !== body.id) this.buildInspector(body);
     if (document.body.classList.contains('inspector-collapsed')) {
       this.inspector.classList.add('hidden');

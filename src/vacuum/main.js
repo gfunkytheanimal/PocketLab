@@ -1790,6 +1790,10 @@ function inspectAction(action) {
   if (action === 'velocity-up') body.velocity.multiplyScalar(1.35);
   if (action === 'velocity-down') body.velocity.multiplyScalar(0.65);
   if (action === 'orbit-kick') orbitKick(body);
+  if (action === 'unlock-orbit') {
+    body.orbitAnchorId = null;
+    ui.status.textContent = `${body.label} orbit lock released`;
+  }
   if (action === 'dust-ring') seedDustRing(body);
   if (action === 'tractor') tractorSelected(body);
   if (action === 'goo-burst') emitBioPlasma(body);
@@ -2042,6 +2046,7 @@ function lockOrbit(satellite, anchor, strengthScale = 1) {
   satellite.velocity.copy(anchor.velocity).addScaledVector(tangent, speed);
   satellite.trail.length = 0;
   satellite.orbitAnchorId = anchor.id;
+  satellite.orbitAnchorLabel = anchor.label;
   satellite.captureCooldown = 1.2;
   satellite.fieldStress = Math.max(satellite.fieldStress ?? 0, 0.18);
   anchor.satelliteCount = Math.max(anchor.satelliteCount ?? 0, 1);
